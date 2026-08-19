@@ -295,8 +295,10 @@ CF.react = function (S, e, a, b, srcx, srcy) {
   var r = CF.REACT[CF.rk(a, b)];
   if (!r) return null;
   S.stats.reactions[r.key]++;
-  S.fx.push({ kind:'react', x:e.x, y:e.y, t:0.55, max:0.55, col:r.col, name:r.name,
-              r:(r.splash||r.zone&&r.zone.radius||1.2)*T });
+  S.fx.push({ kind:'react', rk:r.key, x:e.x, y:e.y, t:0.7, max:0.7,
+              col:r.col, name:r.name, seed:S.rng(),
+              ux:(e.ux||1), uy:(e.uy||0),
+              r:(r.splash || (r.zone && r.zone.radius) || 1.2)*T });
 
   CF.hurt(S, e, e.def.wardImmune ? e.def.wardBreak : r.dmg,
           { reaction:true, wardBreak:true });
@@ -330,7 +332,8 @@ CF.react = function (S, e, a, b, srcx, srcy) {
 
   if (r.zone) {
     S.zones.push({ x:e.x, y:e.y, r:r.zone.radius*T, t:r.zone.time, max:r.zone.time,
-                   dps:r.zone.dps||0, slow:r.zone.slow||0, kind:r.zone.kind, col:r.col });
+                   dps:r.zone.dps||0, slow:r.zone.slow||0, kind:r.zone.kind,
+                   col:r.col, seed:S.rng() });
   }
   return r;
 };

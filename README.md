@@ -138,6 +138,26 @@ The three presets are not a multiplier bolted on at the end — they move the sa
 two knobs (`CF.HP_MUL`, `CF.GOLD_MUL`) that the harness sweeps, so each preset
 is a measured point on the curve.
 
+## Each reaction looks like its verb
+
+The six reactions used to share one white radial burst with the name printed
+above it, which meant the *text* was doing all the work — you could not learn
+the system by watching, only by reading. They now each carry the shape of what
+they do:
+
+| | looks like |
+|---|---|
+| **Steam** | billowing cloud, with streaks showing the shove backwards |
+| **Firestorm** | licks thrown outward, plus arcs drawn to each chained foe |
+| **Magma** | jagged fissures splitting the ground, embers rising from the zone |
+| **Frost** | hard angular shards — a hard stop should not look soft |
+| **Mire** | opaque bubbling mud, the only reaction that is not bright |
+| **Grit** | a directional blast with armour fragments flying off |
+
+Under a deliberately absurd worst case — 76 foes, 24 simultaneous reactions,
+23 ground zones — a frame costs 1.09ms to draw and 0.09ms to step, about 14×
+inside the 60fps budget.
+
 ## Accessibility
 
 The entire rule-set is communicated by hue, which is not an acceptable single

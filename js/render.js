@@ -9,6 +9,18 @@ var R = CF.render = {};
 
 R.view = { hover:null, sel:null, ghost:null, showRanges:false, heroSel:null };
 
+/* stable per-effect randomness: the same effect must look the same every
+   frame it is alive, or it boils */
+function mulberry(a) {
+  var t = (a * 4294967296) >>> 0;
+  return function () {
+    t += 0x6D2B79F5; t >>>= 0;
+    var r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function ring(g, x, y, rad, col, w, alpha) {
   g.save();
   g.globalAlpha = alpha == null ? 1 : alpha;
@@ -44,6 +56,41 @@ R.draw = function (g, S, dt) {
     g.globalAlpha = 0.5*k;
     g.strokeStyle = z.col; g.lineWidth = 1.5;
     g.beginPath(); g.arc(z.x, z.y, z.r*0.96, 0, 6.283); g.stroke();
+
+    var zr = mulberry(z.seed || 0.3);
+    if (z.kind === 'magma') {                    // fissures and rising embers
+      g.globalAlpha = 0.55*k;
+      g.strokeStyle = '#ffbe6a'; g.lineCap = 'round';
+      for (var mc = 0; mc < 5; mc++) {
+        var am = zr()*6.283, lm = z.r*(0.3 + zr()*0.55);
+        g.lineWidth = 1 + zr()*2;
+        g.beginPath();
+        g.moveTo(z.x + Math.cos(am)*z.r*0.15, z.y + Math.sin(am)*z.r*0.15);
+        g.lineTo(z.x + Math.cos(am)*lm, z.y + Math.sin(am)*lm);
+        g.stroke();
+      }
+      g.globalCompositeOperation = 'lighter';
+      for (var em = 0; em < 5; em++) {
+        var ae = zr()*6.283, re = z.r*zr()*0.85;
+        var rise = ((S.t*34 + em*40) % 40);
+        g.globalAlpha = 0.6*k*(1 - rise/40);
+        g.fillStyle = '#ffd07a';
+        g.beginPath();
+        g.arc(z.x + Math.cos(ae)*re, z.y + Math.sin(ae)*re - rise*0.5, 1.8, 0, 6.283);
+        g.fill();
+      }
+    } else {                                     // mud that bubbles
+      for (var mb = 0; mb < 6; mb++) {
+        var ab2 = zr()*6.283, rb2 = z.r*zr()*0.8;
+        var ph2 = (S.t*1.4 + zr()*6) % 2;
+        var pop = ph2 < 1 ? ph2 : 2 - ph2;
+        g.globalAlpha = 0.5*k*pop;
+        g.fillStyle = '#a08a5a';
+        g.beginPath();
+        g.arc(z.x + Math.cos(ab2)*rb2, z.y + Math.sin(ab2)*rb2, 1.5 + pop*3.5, 0, 6.283);
+        g.fill();
+      }
+    }
     g.restore();
   });
 
@@ -57,6 +104,20 @@ R.draw = function (g, S, dt) {
     ring(g, showT.x, showT.y, st.range*T, CF.EL[showT.el].col, 2, 0.75);
     g.restore();
   }
+
+  /* a pool of the tower's own element on the ground: depth, and it makes the
+     element layout of the whole board readable at a glance */
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  S.towers.forEach(function (t) {
+    var lg = g.createRadialGradient(t.x, t.y, 2, t.x, t.y, T*1.5);
+    lg.addColorStop(0, CF.EL[t.el].col);
+    lg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.globalAlpha = 0.11 + 0.03*t.tier;
+    g.fillStyle = lg;
+    g.beginPath(); g.ellipse(t.x, t.y + T*0.1, T*1.5, T*1.1, 0, 0, 6.283); g.fill();
+  });
+  g.restore();
 
   /* ── towers ── */
   S.towers.forEach(function (t) {
@@ -81,6 +142,17 @@ R.draw = function (g, S, dt) {
     var col = CF.EL[s.el].col;
     g.save();
     g.globalCompositeOperation = 'lighter';
+    var vx = s.lx - s.x, vy = s.ly - s.y, vl = Math.hypot(vx, vy) || 1;
+    var tg = g.createLinearGradient(s.x, s.y, s.x - vx/vl*22, s.y - vy/vl*22);
+    tg.addColorStop(0, col);
+    tg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.strokeStyle = tg; g.lineWidth = 4; g.lineCap = 'round';
+    g.globalAlpha = 0.75*FLASH;
+    g.beginPath();
+    g.moveTo(s.x, s.y);
+    g.lineTo(s.x - vx/vl*22, s.y - vy/vl*22);
+    g.stroke();
+    g.globalAlpha = 1;
     var gr2 = g.createRadialGradient(s.x, s.y, 0.5, s.x, s.y, 9);
     gr2.addColorStop(0, '#ffffff');
     gr2.addColorStop(0.35, col);
@@ -239,24 +311,146 @@ R.draw = function (g, S, dt) {
     var k = 1 - f.t/f.max;
     g.save();
     if (f.kind === 'react') {
-      g.globalCompositeOperation = 'lighter';
-      g.globalAlpha = (1-k)*0.9*FLASH;
-      var rr2 = (f.r || T) * (0.35 + k*1.15);
-      var rg = g.createRadialGradient(f.x, f.y, rr2*0.2, f.x, f.y, rr2);
-      rg.addColorStop(0, '#ffffff');
-      rg.addColorStop(0.4, f.col);
-      rg.addColorStop(1, 'rgba(0,0,0,0)');
-      g.fillStyle = rg;
-      g.beginPath(); g.arc(f.x, f.y, rr2, 0, 6.283); g.fill();
+      /* Each reaction gets the SHAPE of its verb. They used to share one white
+         radial burst, which meant the printed name was doing all the work and
+         the system could not be learned by watching. */
+      var rnd = mulberry(f.seed || 0.5);
+      var grow = 0.35 + k*1.15;
+
+      if (f.rk === 'steam') {
+        /* billows -- several soft lobes, and it shoves them back */
+        g.globalAlpha = (1-k)*0.8*FLASH;
+        for (var b = 0; b < 6; b++) {
+          var ab = rnd()*6.283, rb = rnd();
+          var bx = f.x + Math.cos(ab)*f.r*rb*grow;
+          var by = f.y + Math.sin(ab)*f.r*rb*grow - k*10;
+          var bg = g.createRadialGradient(bx, by, 1, bx, by, f.r*0.55*grow);
+          bg.addColorStop(0, 'rgba(240,252,255,0.95)');
+          bg.addColorStop(1, 'rgba(200,230,240,0)');
+          g.fillStyle = bg;
+          g.beginPath(); g.arc(bx, by, f.r*0.55*grow, 0, 6.283); g.fill();
+        }
+        g.globalAlpha = (1-k)*0.9;
+        g.strokeStyle = f.col; g.lineWidth = 2;
+        for (var ps = 0; ps < 3; ps++) {         // push streaks, against travel
+          var oy = (ps-1)*9;
+          g.beginPath();
+          g.moveTo(f.x + f.ux*k*26, f.y + f.uy*k*26 + oy);
+          g.lineTo(f.x - f.ux*(10 + k*20), f.y - f.uy*(10 + k*20) + oy);
+          g.stroke();
+        }
+
+      } else if (f.rk === 'frost') {
+        /* sharp shards, not a soft blob -- a hard stop should look hard */
+        g.globalAlpha = (1-k);
+        g.fillStyle = f.col;
+        g.strokeStyle = '#eafaff'; g.lineWidth = 1.4;
+        for (var sp = 0; sp < 9; sp++) {
+          var asp = sp*0.698 + (f.seed||0)*6.283;
+          var len = f.r*(0.55 + rnd()*0.75)*grow;
+          var wid = f.r*0.13;
+          g.save();
+          g.translate(f.x, f.y); g.rotate(asp);
+          g.beginPath();
+          g.moveTo(f.r*0.16, 0); g.lineTo(len, -wid); g.lineTo(len + f.r*0.16, 0); g.lineTo(len, wid);
+          g.closePath(); g.fill(); g.stroke();
+          g.restore();
+        }
+
+      } else if (f.rk === 'firestorm') {
+        /* a burst that throws licks outward; the chain arcs carry the rest */
+        g.globalCompositeOperation = 'lighter';
+        g.globalAlpha = (1-k)*0.85*FLASH;
+        for (var fl = 0; fl < 10; fl++) {
+          var af = fl*0.628 + rnd()*0.4;
+          var rf = f.r*(0.3 + rnd()*0.9)*grow;
+          var fx2 = f.x + Math.cos(af)*rf, fy2 = f.y + Math.sin(af)*rf - k*8;
+          var fg2 = g.createRadialGradient(fx2, fy2, 0.5, fx2, fy2, f.r*0.30);
+          fg2.addColorStop(0, '#fff2c0');
+          fg2.addColorStop(0.45, f.col);
+          fg2.addColorStop(1, 'rgba(180,40,0,0)');
+          g.fillStyle = fg2;
+          g.beginPath(); g.arc(fx2, fy2, f.r*0.30, 0, 6.283); g.fill();
+        }
+
+      } else if (f.rk === 'grit') {
+        /* a directional blast, plus the plate it just scoured off */
+        g.globalAlpha = (1-k)*0.95;
+        var gx2 = f.ux, gy2 = f.uy;
+        g.strokeStyle = f.col;
+        for (var st2 = 0; st2 < 12; st2++) {
+          var spread = (rnd()-0.5)*1.1;
+          var cs = Math.cos(spread), sn = Math.sin(spread);
+          var dx2 = gx2*cs - gy2*sn, dy2 = gx2*sn + gy2*cs;
+          var l0 = f.r*0.2 + rnd()*f.r*0.4, l1 = l0 + f.r*(0.4 + k*0.9);
+          g.lineWidth = 1 + rnd()*1.6;
+          g.beginPath();
+          g.moveTo(f.x + dx2*l0, f.y + dy2*l0);
+          g.lineTo(f.x + dx2*l1, f.y + dy2*l1);
+          g.stroke();
+        }
+        g.fillStyle = '#b9b0a0';                 // armour fragments
+        for (var sh = 0; sh < 5; sh++) {
+          var ash = rnd()*6.283, rsh = f.r*(0.4 + k*1.0);
+          g.save();
+          g.translate(f.x + Math.cos(ash)*rsh, f.y + Math.sin(ash)*rsh);
+          g.rotate(ash + k*3);
+          g.fillRect(-3, -1.6, 6, 3.2);
+          g.restore();
+        }
+
+      } else if (f.rk === 'magma') {
+        /* the ground breaking open */
+        g.globalAlpha = (1-k)*0.95;
+        g.strokeStyle = f.col; g.lineCap = 'round';
+        for (var cr2 = 0; cr2 < 6; cr2++) {
+          var ac = cr2*1.047 + (f.seed||0)*3;
+          g.lineWidth = 3.2 - k*2;
+          g.beginPath();
+          g.moveTo(f.x, f.y);
+          var seg = f.r*grow*0.55;
+          var px2 = f.x, py2 = f.y, aa = ac;
+          for (var q2 = 0; q2 < 3; q2++) {
+            aa += (rnd()-0.5)*0.8;
+            px2 += Math.cos(aa)*seg; py2 += Math.sin(aa)*seg;
+            g.lineTo(px2, py2);
+          }
+          g.stroke();
+        }
+        g.globalCompositeOperation = 'lighter';
+        g.globalAlpha = (1-k)*0.7*FLASH;
+        var mg = g.createRadialGradient(f.x, f.y, 1, f.x, f.y, f.r*0.7*grow);
+        mg.addColorStop(0, '#ffd48a'); mg.addColorStop(1, 'rgba(200,50,0,0)');
+        g.fillStyle = mg;
+        g.beginPath(); g.arc(f.x, f.y, f.r*0.7*grow, 0, 6.283); g.fill();
+
+      } else {                                    /* mire */
+        /* opaque, heavy, bubbling -- the only reaction that is not bright */
+        g.globalAlpha = (1-k)*0.9;
+        g.fillStyle = '#5f4c2c';
+        g.beginPath(); g.arc(f.x, f.y, f.r*0.75*grow, 0, 6.283); g.fill();
+        g.fillStyle = f.col;
+        for (var bu = 0; bu < 7; bu++) {
+          var abu = rnd()*6.283, rbu = f.r*rnd()*0.8*grow;
+          var brad = 2 + rnd()*5*(1-k);
+          g.beginPath();
+          g.arc(f.x + Math.cos(abu)*rbu, f.y + Math.sin(abu)*rbu - k*6, brad, 0, 6.283);
+          g.fill();
+        }
+      }
+
       g.globalCompositeOperation = 'source-over';
       if (!CF.settings.names) { g.restore(); return; }
       g.globalAlpha = Math.min(1, (1-k)*2);
       g.font = '700 13px Georgia, serif';
       g.textAlign = 'center';
-      g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.8)';
-      g.strokeText(f.name, f.x, f.y - 18 - k*22);
+      g.lineWidth = 3.5; g.strokeStyle = 'rgba(0,0,0,0.85)';
+      /* stagger by the effect's own seed so two reactions firing near each
+         other do not print their names on the same line */
+      var ly = f.y - 22 - k*24 - (f.seed || 0)*22;
+      g.strokeText(f.name, f.x, ly);
       g.fillStyle = f.col;
-      g.fillText(f.name, f.x, f.y - 18 - k*22);
+      g.fillText(f.name, f.x, ly);
     } else if (f.kind === 'arc') {
       g.globalCompositeOperation = 'lighter';
       g.globalAlpha = (1-k);
@@ -326,6 +520,18 @@ R.draw = function (g, S, dt) {
     }
     g.restore();
   }
+
+  /* vignette last, baked once, so the eye sits in the middle of the board */
+  if (!R._vig || R._vig.width !== W) {
+    R._vig = A.cv(W, H);
+    var vg = R._vig.getContext('2d');
+    var rg2 = vg.createRadialGradient(W/2, H/2, Math.min(W, H)*0.30,
+                                      W/2, H/2, Math.max(W, H)*0.72);
+    rg2.addColorStop(0, 'rgba(0,0,0,0)');
+    rg2.addColorStop(1, 'rgba(6,8,10,0.55)');
+    vg.fillStyle = rg2; vg.fillRect(0, 0, W, H);
+  }
+  g.drawImage(R._vig, 0, 0);
 
   /* ── every plot, faintly, while placing ── */
   if (R.view.ghost) {
