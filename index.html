@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CONFLUENCE</title>
+<link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+<div id="boot">Gathering the elements&hellip;</div>
+
+<!-- ══ TITLE ══════════════════════════════════════════════════════ -->
+<section id="scr-title" class="screen">
+  <canvas id="introcv"></canvas>
+  <div class="title-inner">
+  <h1>CONFLUENCE</h1>
+  <div class="rule"></div>
+  <p class="hook">
+    Nothing on this road dies to one element.<br>
+    A foe carries <b>one</b> element at a time &mdash; lay a <b>different</b> one
+    on top of it and the two react.
+  </p>
+  <div class="elems">
+    <div class="elem"><span class="orb" style="--c:#ff6a3c"></span>Ember</div>
+    <div class="elem"><span class="orb" style="--c:#4aa8d8"></span>Tide</div>
+    <div class="elem"><span class="orb" style="--c:#a8e6cf"></span>Gale</div>
+    <div class="elem"><span class="orb" style="--c:#d0a05a"></span>Stone</div>
+  </div>
+  <div class="title-btns">
+    <button id="btn-begin" class="big">HOLD THE ROAD</button>
+    <button id="btn-codex" class="ghost">The Codex</button>
+    <button id="btn-settings" class="ghost">Settings</button>
+  </div>
+  <p class="intro-cap" id="intro-cap"></p>
+  </div>
+</section>
+
+<!-- ══ PLAY ═══════════════════════════════════════════════════════ -->
+<section id="scr-play" class="screen">
+  <header id="topbar">
+    <div class="stat"><span class="tag">Gold</span><b id="hud-gold">0</b></div>
+    <div class="stat"><span class="tag">Gate</span><b id="hud-lives">20</b></div>
+    <div class="stat"><span class="tag">Wave</span><b id="hud-wave">1 / 18</b></div>
+    <button id="btn-wave">BEGIN</button>
+    <div class="sp">
+      <button id="btn-codex2" class="ghost">CODEX</button>
+      <button id="btn-settings2" class="ghost">⚙</button>
+      <button id="btn-pause">PAUSE</button>
+      <button id="sp-1" class="on">1&times;</button>
+      <button id="sp-2">2&times;</button>
+      <button id="sp-3">3&times;</button>
+    </div>
+  </header>
+
+  <div id="stage">
+    <div id="boardwrap">
+      <canvas id="board"></canvas>
+      <div id="toast"></div>
+    </div>
+    <aside id="side">
+      <div class="side-h">The Wall</div>
+      <div id="palette"></div>
+      <div id="sel"></div>
+      <div class="side-h">Those Who Walk</div>
+      <div id="heroes"></div>
+    </aside>
+  </div>
+
+  <footer id="hint"></footer>
+</section>
+
+<!-- ══ CODEX ══════════════════════════════════════════════════════ -->
+<div id="codex">
+  <div class="codex-plate">
+    <h2>THE CODEX</h2>
+    <div id="codex-body"></div>
+    <h3>Commands</h3>
+    <div class="keys">
+      <b>1 &ndash; 4</b><span>choose a tower, then click a flagstone plot</span>
+      <b>Click a tower</b><span>inspect, upgrade or sell it</span>
+      <b>Click a hero, then the board</b><span>send them there</span>
+      <b>Q W E</b><span>hero abilities</span>
+      <b>Space</b><span>call the next wave early for extra gold</span>
+      <b>Shift + click</b><span>keep placing the same tower</span>
+      <b>Right-click</b><span>cancel placement, or send the selected hero</span>
+      <b>P</b><span>pause</span>
+      <b>C</b><span>open and close this codex</span>
+    </div>
+    <div class="codex-foot"><button id="codex-close" class="big">CLOSE</button></div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS ═══════════════════════════════════════════════════ -->
+<div id="settings">
+  <div class="codex-plate">
+    <h2>SETTINGS</h2>
+    <div id="settings-body"></div>
+    <div class="codex-foot">
+      <button id="settings-reset" class="ghost">RESET</button>
+      <button id="settings-close" class="big">DONE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESULT ═════════════════════════════════════════════════════ -->
+<section id="scr-result" class="screen">
+  <div class="result-plate">
+    <h2 id="r-title">THE ROAD HELD</h2>
+    <p id="r-sub"></p>
+    <div id="r-lines"></div>
+    <div class="result-foot">
+      <button id="btn-again" class="big">AGAIN</button>
+      <button id="btn-menu" class="ghost">TITLE</button>
+    </div>
+  </div>
+</section>
+
+<script src="js/data.js?v=1"></script>
+<script src="js/settings.js?v=1"></script>
+<script src="js/sim.js?v=1"></script>
+<script src="js/art.js?v=1"></script>
+<script src="js/render.js?v=1"></script>
+<script src="js/game.js?v=1"></script>
+<script>
+/* A missing script tag must never leave a silent blank page. */
+setTimeout(function () {
+  var b = document.getElementById('boot');
+  if (b && !(window.CF && window.CF.booted)) {
+    b.innerHTML = '<b>The elements did not gather.</b><br>A script failed to load &mdash; open the console.';
+    b.style.color = '#d4553f';
+  }
+}, 4000);
+</script>
+</body>
+</html>

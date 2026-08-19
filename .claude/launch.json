@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "confluence",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["serve.py", "5813"],
+      "port": 5813
+    }
+  ]
+}
