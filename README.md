@@ -42,6 +42,12 @@ best answers.
 them than you can afford. The question stops being "can I buy another tower" and
 becomes "which element goes *here*".
 
+**An element is laid by the shot that was *aimed*.** A damage splash wounds a
+clump but leaves only its target carrying the element — otherwise two area
+towers blanket the road and pair with each other constantly (Mire alone reached
+44% of all reactions). Stoneward is the deliberate exception: its shockwave lays
+Stone wide, and that is its whole identity.
+
 **Reaction cooldown.** After a reaction, a target will not hold a new aura for
 1.5s. Without this, sprinkling one of every tower along the whole road is
 strictly best and there is no decision left. With it, firing the *right*
@@ -73,14 +79,26 @@ Measured on the shipped numbers:
 
 | build | clears | dies around |
 |---|---|---|
-| all four elements | 18/21, avg 14.6 of 20 lives | — |
-| gale + stone | 13/21 | wave 14 |
-| ember + tide | 0/21 | wave 17 |
-| **any single element** | **0/21** | **wave 7–9** |
+| all four elements | 18/21, avg 15.8 of 20 lives | — |
+| gale + stone | 16/21, avg 9.8 lives | wave 16 |
+| ember + tide | 0/21 | wave 16 |
+| **any single element** | **0/21** | **wave 8–9** |
 
 Single-element is a hard fail; four elements wins under real pressure. Reactions
-account for ~57% of all damage dealt, so the combination system carries the game
+account for ~60% of all damage dealt, so the combination system carries the game
 without eclipsing tower fire.
+
+All six reactions get played, 10–21% each:
+
+| Grit | Mire | Firestorm | Frost | Magma | Steam |
+|---|---|---|---|---|---|
+| 21% | 20% | 20% | 15% | 13% | 10% |
+
+They did not start that way. Magma, Mire and Grit were 5–8% — all three
+contain Stone, and Stoneward had both the shortest range and the slowest fire
+rate, giving it a **10× aura-application deficit**. The reactions were not weak;
+Stone simply never got laid. `tools/diagnose-reactions.js` found it and
+`tools/tune-aurasplash.js` searched the fix.
 
 Two caveats worth stating plainly. The sweep's policy assigns elements to plots
 **at random**, so it understates deliberate play — a human who actually pairs
@@ -121,7 +139,9 @@ nothing.
 | `js/art.js` | sprites, baked once at boot |
 | `js/render.js` | drawing, plus the per-enemy gait |
 | `js/game.js` | screens, input, the loop |
-| `tools/harness.js` | the balance harness |
+| `tools/harness.js` | verb checks and the seeded balance sweep |
+| `tools/diagnose-reactions.js` | why a reaction is or is not getting played |
+| `tools/tune-aurasplash.js` | searches for the flattest reaction spread |
 
 ## Controls
 
