@@ -95,7 +95,8 @@ CF.TOWERS = {
   },
   tidespring: {
     key:'tidespring', el:'tide', name:'Tidespring', cost:85,
-    blurb:'Heavy water with a small splash, so it aurases a clump at once.',
+    blurb:'Heavy water. The splash wounds a whole clump, but only what it ' +
+          'aims at is left carrying Tide.',
     tiers:[
       { dmg:14, rof:0.95, range:3.0, splash:0.9 },
       { dmg:24, rof:0.88, range:3.2, splash:1.1, cost:105 },
@@ -113,11 +114,12 @@ CF.TOWERS = {
   },
   stoneward: {
     key:'stoneward', el:'stone', name:'Stoneward', cost:100,
-    blurb:'Slow and enormous, with a short reach. Put it where things bunch.',
+    blurb:'Slow and enormous, and the ONLY tower that lays its element wide: ' +
+          'the shockwave leaves everything near the impact carrying Stone.',
     tiers:[
-      { dmg:34, rof:1.35, range:2.5 },
-      { dmg:58, rof:1.40, range:2.6, cost:130 },
-      { dmg:96, rof:1.28, range:2.8, cost:240 }
+      { dmg:34, rof:1.20, range:2.8, auraSplash:1.30 },
+      { dmg:58, rof:1.14, range:3.0, auraSplash:1.42, cost:130 },
+      { dmg:96, rof:1.05, range:3.2, auraSplash:1.60, cost:240 }
     ]
   }
 };
@@ -229,6 +231,12 @@ CF.WAVES = [
   { n:18, bonus:480, boss:true,
           g:[['idol',1,1,0],['husk',18,0.7,4],['acolyte',8,1.3,12],['golem',6,2.0,20],['gorehoof',6,1.6,34]] }
 ];
+
+/* An element is laid by the shot that was AIMED; a splash only damages.
+   With splash laying auras too, two area appliers blanket the road and pair
+   with each other constantly -- MIRE alone was 44% of all reactions and three
+   others were near-dead. Turning this off flattened the six to 12-21% each. */
+CF.SPLASH_LAYS_AURA = false;
 
 CF.GOLD_MUL = 1.0;   // global bounty scale, for tuning
 CF.HP_MUL   = 1.0;   // global enemy hp scale, for tuning

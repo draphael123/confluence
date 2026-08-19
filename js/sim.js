@@ -469,7 +469,7 @@ CF.step = function (S, dt) {
     var spd = tw.el === 'gale' ? 18 : tw.el === 'stone' ? 9 : 13;
     S.shots.push({
       x:tw.x, y:tw.y, tgt:tgt, el:tw.el, dmg:st.dmg,
-      splash:st.splash || 0, spd:spd*T,
+      splash:st.splash || 0, auraSplash:st.auraSplash || 0, spd:spd*T,
       lx:tgt.x, ly:tgt.y, dead:false
     });
   }
@@ -505,11 +505,20 @@ CF.impact = function (S, s) {
   if (s.splash) {
     enemiesNear(S, s.x, s.y, s.splash*T, s.tgt).forEach(function (o) { hit.push(o); });
   }
-  if (!hit.length) return;
   hit.forEach(function (e, idx) {
     CF.hurt(S, e, idx === 0 ? s.dmg : Math.round(s.dmg*0.7));
-    if (!e.dead) CF.applyElement(S, e, s.el, s.x, s.y);
+    if (e.dead) return;
+    if (idx === 0 || CF.SPLASH_LAYS_AURA) CF.applyElement(S, e, s.el, s.x, s.y);
   });
+
+  /* An AURA splash lays the element without dealing damage. A tower that
+     hits hard but rarely can still be half of a reaction often -- which is
+     what an applier has to be in this game. Damage balance is untouched. */
+  if (s.auraSplash) {
+    enemiesNear(S, s.x, s.y, s.auraSplash*T, null).forEach(function (o) {
+      if (hit.indexOf(o) < 0 && !o.dead) CF.applyElement(S, o, s.el, s.x, s.y);
+    });
+  }
 };
 
 /* ── hero step ────────────────────────────────────────────────────── */
