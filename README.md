@@ -9,7 +9,7 @@ Apply, then trigger. That single rule is what makes tower *order along the road*
 the central puzzle instead of tower stats, and it makes stacking four fire
 towers useless without anyone having to write a rule that says so.
 
-Play it: **https://confluence-td.vercel.app**
+Play it: **https://confluence-sooty.vercel.app**
 
 ---
 
