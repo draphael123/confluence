@@ -35,6 +35,26 @@ G.boot = function () {
   CF.loadSettings();
   CF.applyDifficulty();
 
+  /* browsers will not start audio before a gesture */
+  function wake() { CF.audio.start(); CF.audio.resume(); CF.audio.syncVolume(); }
+  document.addEventListener('pointerdown', wake, { once:false });
+  document.addEventListener('keydown', wake, { once:false });
+
+  CF.onEvent = function (kind, a) {
+    var au = CF.audio;
+    if (!au.ready()) return;
+    if (kind === 'reaction') au.reaction(a);
+    else if (kind === 'shot') au.shot(a);
+    else if (kind === 'death') au.death(a);
+    else if (kind === 'leak') au.leak();
+    else if (kind === 'build') au.build();
+    else if (kind === 'sell') au.sell();
+    else if (kind === 'wave') au.wave();
+    else if (kind === 'ability') au.ability(a);
+    else if (kind === 'win') au.win();
+    else if (kind === 'lose') au.lose();
+  };
+
   A.build();
   buildPalette();
   buildCodex();
@@ -351,8 +371,8 @@ function onClick(ev) {
 
   if (picked) {
     var d = CF.TOWERS[picked];
-    if (!CF.canBuild(S, c, r)) { toast('Towers only go on the flagstone plots.'); return; }
-    if (S.gold < d.cost) { toast('Not enough gold for a ' + d.name + '.'); return; }
+    if (!CF.canBuild(S, c, r)) { CF.audio.deny(); toast('Towers only go on the flagstone plots.'); return; }
+    if (S.gold < d.cost) { CF.audio.deny(); toast('Not enough gold for a ' + d.name + '.'); return; }
     var t = CF.placeTower(S, picked, c, r);
     if (t) {
       R.view.sel = t;
@@ -410,6 +430,7 @@ function buildSettings() {
         CF.settings[d.key] = val;
         CF.saveSettings();
         if (d.key === 'difficulty') CF.applyDifficulty();
+        if (d.key === 'volume') { CF.audio.start(); CF.audio.syncVolume(); }
         if (d.key === 'speed' && S) setSpeed(parseInt(val, 10) || 1);
         buildSettings();
       };
@@ -476,6 +497,10 @@ function introReset() {
 }
 function introTick(dt) {
   if (!introOn || !introS) return;
+  var quiet = CF.onEvent; CF.onEvent = null;   // the menu demo stays silent
+  try { introBody(dt); } finally { CF.onEvent = quiet; }
+}
+function introBody(dt) {
   if (!$('scr-title').classList.contains('on')) return;
   introT += dt;
 

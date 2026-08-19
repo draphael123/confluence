@@ -36,6 +36,17 @@ R.draw = function (g, S, dt) {
   if (A.statics) g.drawImage(A.statics, 0, 0);
   else { g.fillStyle = '#2c4133'; g.fillRect(0, 0, W, H); }
 
+  /* cloud shadow drifting across the field -- one baked texture scrolled,
+     which is far cheaper than building gradients every frame */
+  if (A.clouds) {
+    var off = (S.t*9) % W;
+    g.save();
+    g.globalAlpha = 0.22;
+    g.drawImage(A.clouds, -off, Math.sin(S.t*0.05)*8);
+    g.drawImage(A.clouds, W - off, Math.sin(S.t*0.05)*8);
+    g.restore();
+  }
+
   /* ── ground zones left by MAGMA and MIRE ── */
   S.zones.forEach(function (z) {
     var k = Math.max(0, z.t/z.max);

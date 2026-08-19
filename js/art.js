@@ -36,129 +36,305 @@ function shade(hex, k) {
 A.shade = shade;
 
 /* ── the static world ───────────────────────────────────────────────
-   Ground, road, plots and scenery never move, so they are painted once.
+   Painted once at boot, so it can afford far more detail than a per-frame
+   pass ever could. Everything obeys ONE light direction (upper left), which
+   is most of what separates "painted" from "flat fill": warm light on the
+   upper-left of every mass, cool shadow on the lower-right, and every cast
+   shadow offset the same way.
 */
+var LX = -0.58, LY = -0.81;              // direction the light comes FROM
+var SHX = 5, SHY = 7;                    // therefore every shadow lands here
+
 A.bakeStatic = function () {
   var W = CF.COLS*T, H = CF.ROWS*T;
   var c = cv(W, H), g = ctxOf(c);
   var map = CF.map(), p = CF.path();
   var rng = CF.makeRng(4242);
 
-  /* turf */
-  g.fillStyle = '#2c4133'; g.fillRect(0, 0, W, H);
-  for (var i = 0; i < 2600; i++) {
-    var x = rng()*W, y = rng()*H;
-    g.fillStyle = rng() < 0.5 ? 'rgba(60,88,64,0.30)' : 'rgba(24,38,29,0.32)';
-    g.beginPath(); g.ellipse(x, y, 6+rng()*16, 4+rng()*10, rng()*3.14, 0, 6.283); g.fill();
+  function blob(x, y, rx, ry, rot, col, a) {
+    g.save(); g.globalAlpha = a;
+    g.fillStyle = col;
+    g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, 6.283); g.fill();
+    g.restore();
   }
-  /* a cool wash toward the bottom so the board has a light direction */
-  var wash = g.createLinearGradient(0, 0, 0, H);
-  wash.addColorStop(0, 'rgba(120,150,120,0.10)');
-  wash.addColorStop(1, 'rgba(0,10,15,0.28)');
-  g.fillStyle = wash; g.fillRect(0, 0, W, H);
 
-  /* the road, stroked as one polyline rather than tile by tile */
-  function strokeRoad(width, style, blur) {
+  /* ── 1. turf, built in scales: broad meadow variation first, then
+        patches, then blades. Uniform noise alone always reads as static. */
+  var base = g.createLinearGradient(0, 0, W*0.35, H);
+  base.addColorStop(0, '#3a5945');
+  base.addColorStop(0.55, '#314b3b');
+  base.addColorStop(1, '#273c30');
+  g.fillStyle = base; g.fillRect(0, 0, W, H);
+
+  for (var m = 0; m < 26; m++) {           // broad rolls of lighter/darker turf
+    var mx = rng()*W, my = rng()*H;
+    var mr = 120 + rng()*260;
+    blob(mx, my, mr, mr*(0.5 + rng()*0.4), rng()*3.14,
+         rng() < 0.5 ? '#48704f' : '#24382c', 0.18 + rng()*0.14);
+  }
+  for (var pch = 0; pch < 46; pch++) {     // mid patches, some yellowed, some cold
+    var px = rng()*W, py = rng()*H;
+    var pr = 34 + rng()*90;
+    var tone = rng();
+    var col = tone < 0.34 ? '#4a6b41' : tone < 0.62 ? '#5c7444' : tone < 0.85 ? '#2a4436' : '#6b7a45';
+    blob(px, py, pr, pr*(0.42 + rng()*0.4), rng()*3.14, col, 0.16 + rng()*0.14);
+  }
+
+  /* blades: short strokes, all leaning the same way, as if one wind */
+  g.save();
+  g.lineCap = 'round';
+  for (var b = 0; b < 4200; b++) {
+    var bx = rng()*W, by = rng()*H;
+    var len = 1.8 + rng()*3.0;
+    var lean = (rng() < 0.5 ? 1 : -1) * (0.15 + rng()*0.35);
+    var lum = rng();
+    g.strokeStyle = lum < 0.42 ? 'rgba(120,158,104,0.30)'
+                  : lum < 0.78 ? 'rgba(46,72,52,0.34)'
+                               : 'rgba(158,182,116,0.22)';
+    g.lineWidth = 0.9 + rng()*1.0;
+    g.beginPath();
+    g.moveTo(bx, by);
+    g.quadraticCurveTo(bx + len*lean*0.5, by - len*0.6, bx + len*lean, by - len);
+    g.stroke();
+  }
+  g.restore();
+
+  /* a few pale wildflowers: cheap, and they read as "finished" */
+  for (var fl = 0; fl < 190; fl++) {
+    var fx = rng()*W, fy = rng()*H;
+    if (CF.roadDist(fx, fy) < (CF.PATH_HALF + 0.7)*T) continue;
+    var fc = rng();
+    g.fillStyle = fc < 0.4 ? 'rgba(226,224,180,0.75)'
+                : fc < 0.72 ? 'rgba(198,206,224,0.6)' : 'rgba(214,178,196,0.6)';
+    g.beginPath(); g.arc(fx, fy, 1.1 + rng()*1.1, 0, 6.283); g.fill();
+  }
+
+  /* ── 2. the road: soil bed, worn surface, broken edges ── */
+  function strokePath(width, style, cap) {
     g.save();
-    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.lineJoin = 'round'; g.lineCap = cap || 'round';
     g.strokeStyle = style; g.lineWidth = width;
-    if (blur) { g.shadowColor = 'rgba(0,0,0,0.5)'; g.shadowBlur = blur; }
     g.beginPath();
     g.moveTo(p.pts[0].x, p.pts[0].y);
     for (var k = 1; k < p.pts.length; k++) g.lineTo(p.pts[k].x, p.pts[k].y);
     g.stroke();
     g.restore();
   }
-  strokeRoad(T*2.15, '#20301f', 10);
-  strokeRoad(T*1.95, '#5f5039', 0);
-  strokeRoad(T*1.62, '#6f5f45', 0);
-  /* ruts and grit */
+  strokePath(T*2.30, 'rgba(12,20,14,0.55)');     // the ground dips: soft AO
+  strokePath(T*2.10, '#3c3325');                 // turned soil at the verge
+  strokePath(T*1.92, '#6a583d');
+  strokePath(T*1.70, '#7a6749');                 // worn surface
+  strokePath(T*1.20, '#87724f');                 // the part boots actually touch
+
+  /* break the outline so it stops reading as a stroked line */
+  for (var e2 = 0; e2 < 620; e2++) {
+    var d2 = rng()*p.total;
+    var a2 = CF.posAt(d2);
+    var nx2 = -a2.uy, ny2 = a2.ux;
+    var side = rng() < 0.5 ? -1 : 1;
+    var off = (0.86 + rng()*0.26)*T*side;
+    var ex = a2.x + nx2*off, ey = a2.y + ny2*off;
+    if (rng() < 0.55) {                          // turf spilling onto the road
+      blob(ex, ey, 5 + rng()*11, 3 + rng()*7, rng()*3.14, '#33503a', 0.55);
+    } else {                                     // dirt spilling onto the turf
+      blob(ex, ey, 4 + rng()*9, 3 + rng()*6, rng()*3.14, '#6e5c40', 0.45);
+    }
+  }
+
+  /* ruts that follow the road, and grit */
   g.save();
-  g.globalAlpha = 0.5;
-  for (var s = 0; s < p.total; s += 5) {
-    var a = CF.posAt(s);
-    var nx = -a.uy, ny = a.ux;
-    var o = (rng()-0.5)*T*1.1;
-    g.fillStyle = rng() < 0.5 ? 'rgba(40,32,22,0.5)' : 'rgba(150,132,100,0.28)';
-    g.fillRect(a.x + nx*o - 1.5, a.y + ny*o - 1.5, 3, 3);
+  g.lineCap = 'round';
+  for (var rt = 0; rt < 3; rt++) {
+    var offR = (rt - 1)*T*0.42;
+    g.strokeStyle = 'rgba(52,42,28,0.30)';
+    g.lineWidth = 2.5 + rng()*2;
+    g.beginPath();
+    var started = false;
+    for (var dd = 0; dd < p.total; dd += 14) {
+      var ar = CF.posAt(dd);
+      var nxr = -ar.uy, nyr = ar.ux;
+      var wob = Math.sin(dd*0.03 + rt)*3;
+      var rx2 = ar.x + nxr*(offR + wob), ry2 = ar.y + nyr*(offR + wob);
+      if (!started) { g.moveTo(rx2, ry2); started = true; } else g.lineTo(rx2, ry2);
+    }
+    g.stroke();
   }
   g.restore();
+  for (var gr = 0; gr < 1500; gr++) {
+    var dg = rng()*p.total, ag = CF.posAt(dg);
+    var ng = -ag.uy, mg = ag.ux;
+    var og = (rng() - 0.5)*T*1.5;
+    var gx = ag.x + ng*og, gy = ag.y + mg*og;
+    var gl = rng();
+    g.fillStyle = gl < 0.45 ? 'rgba(46,37,24,0.45)'
+                : gl < 0.8 ? 'rgba(160,142,108,0.35)' : 'rgba(196,180,140,0.28)';
+    g.beginPath(); g.arc(gx, gy, 0.7 + rng()*1.5, 0, 6.283); g.fill();
+  }
 
-  /* plots: a prepared foundation. It has to say "build here", not "rock" --
-     corner brackets and a dashed rim read as surveyor's marks. */
+  /* ── 3. scenery, lit from the same place as everything else ── */
+  function castShadow(x, y, rx, ry) {
+    g.save(); g.globalAlpha = 0.34; g.fillStyle = '#0d1610';
+    g.beginPath(); g.ellipse(x + SHX, y + SHY, rx, ry, 0, 0, 6.283); g.fill();
+    g.restore();
+  }
+
+  function tree(x, y, scale) {
+    var hgt = T*(0.9 + rng()*0.55)*scale;
+    var cw = T*(0.46 + rng()*0.2)*scale;
+    castShadow(x + 3, y + 4, cw*1.05, cw*0.44);
+    g.strokeStyle = '#3a2a1c';
+    g.lineWidth = 4.5*scale; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x, y);
+    g.quadraticCurveTo(x - 2, y - hgt*0.4, x - 1, y - hgt*0.55); g.stroke();
+    var lobes = 5 + (rng()*4|0);
+    var cy = y - hgt*0.72;
+    for (var L = 0; L < lobes; L++) {           // dark mass first
+      var lx = x + (rng()-0.5)*cw*1.7, ly = cy + (rng()-0.5)*cw*1.05;
+      g.fillStyle = '#25412b';
+      g.beginPath(); g.arc(lx, ly, cw*(0.55 + rng()*0.42), 0, 6.283); g.fill();
+    }
+    for (var L2 = 0; L2 < lobes; L2++) {        // mid tone
+      var lx2 = x + (rng()-0.5)*cw*1.5, ly2 = cy + (rng()-0.5)*cw*0.9;
+      g.fillStyle = rng() < 0.5 ? '#2b4b2e' : '#325533';
+      g.beginPath(); g.arc(lx2, ly2, cw*(0.42 + rng()*0.34), 0, 6.283); g.fill();
+    }
+    for (var L3 = 0; L3 < 4; L3++) {            // light catching the upper left
+      var lx3 = x + LX*cw*0.75 + (rng()-0.5)*cw*0.7;
+      var ly3 = cy + LY*cw*0.55 + (rng()-0.5)*cw*0.5;
+      g.fillStyle = rng() < 0.5 ? 'rgba(126,166,104,0.75)' : 'rgba(158,190,120,0.55)';
+      g.beginPath(); g.arc(lx3, ly3, cw*(0.20 + rng()*0.20), 0, 6.283); g.fill();
+    }
+  }
+
+  function bush(x, y, scale) {
+    var r0 = T*(0.28 + rng()*0.16)*scale;
+    castShadow(x, y + 2, r0*1.2, r0*0.44);
+    for (var q = 0; q < 4; q++) {
+      var bx2 = x + (rng()-0.5)*r0*1.6, by2 = y - rng()*r0*0.7;
+      g.fillStyle = '#233d28';
+      g.beginPath(); g.arc(bx2, by2, r0*(0.6 + rng()*0.4), 0, 6.283); g.fill();
+    }
+    g.fillStyle = 'rgba(120,160,100,0.55)';
+    g.beginPath(); g.arc(x + LX*r0*0.5, y - r0*0.55, r0*0.42, 0, 6.283); g.fill();
+    if (rng() < 0.35) {                          // berries
+      g.fillStyle = 'rgba(196,86,72,0.85)';
+      for (var be = 0; be < 3; be++) {
+        g.beginPath();
+        g.arc(x + (rng()-0.5)*r0, y - rng()*r0*0.8, 1.6, 0, 6.283); g.fill();
+      }
+    }
+  }
+
+  function rock(x, y, scale) {
+    var r0 = T*(0.22 + rng()*0.2)*scale;
+    castShadow(x, y + 2, r0*1.25, r0*0.5);
+    var pts = [], n = 6 + (rng()*3|0);
+    for (var v = 0; v < n; v++) {
+      var av = v/n*6.283, rv = r0*(0.75 + rng()*0.45);
+      pts.push([x + Math.cos(av)*rv, y + Math.sin(av)*rv*0.78]);
+    }
+    g.beginPath();
+    pts.forEach(function (pt, i) { g[i ? 'lineTo' : 'moveTo'](pt[0], pt[1]); });
+    g.closePath();
+    g.fillStyle = '#4e5150'; g.fill();
+    g.strokeStyle = 'rgba(16,20,20,0.6)'; g.lineWidth = 1.4; g.stroke();
+    g.save(); g.clip();                          // lit face, upper left
+    g.fillStyle = 'rgba(158,166,162,0.55)';
+    g.beginPath();
+    g.ellipse(x + LX*r0*0.5, y + LY*r0*0.5, r0*0.8, r0*0.5, -0.5, 0, 6.283);
+    g.fill();
+    g.fillStyle = 'rgba(180,150,90,0.20)';       // lichen
+    g.beginPath(); g.arc(x + r0*0.3, y + r0*0.2, r0*0.35, 0, 6.283); g.fill();
+    g.restore();
+  }
+
+  function log(x, y, scale) {
+    var len = T*(0.7 + rng()*0.5)*scale, rad = T*0.16*scale;
+    var rot = rng()*3.14;
+    g.save(); g.translate(x, y); g.rotate(rot);
+    g.globalAlpha = 0.34; g.fillStyle = '#0d1610';
+    rr(g, -len/2 + SHX, -rad + SHY, len, rad*2, rad); g.fill();
+    g.globalAlpha = 1;
+    g.fillStyle = '#4a3826';
+    rr(g, -len/2, -rad, len, rad*2, rad); g.fill();
+    g.fillStyle = 'rgba(124,98,66,0.7)';
+    rr(g, -len/2, -rad, len, rad*0.8, rad*0.5); g.fill();
+    g.fillStyle = '#6b533a';
+    g.beginPath(); g.ellipse(len/2, 0, rad*0.45, rad, 0, 0, 6.283); g.fill();
+    g.restore();
+  }
+
+  /* blocked tiles get the big pieces; the gaps get filler so the field does
+     not look like objects sitting on a grid */
+  var placed = [];
+  Object.keys(map.blocked).forEach(function (k) {
+    var pr = k.split(','), cx = (+pr[0]+0.5)*T, cy = (+pr[1]+0.5)*T;
+    cx += (rng()-0.5)*14; cy += (rng()-0.5)*14;
+    placed.push([cx, cy]);
+    var kind = rng();
+    if (kind < 0.52) tree(cx, cy, 0.85 + rng()*0.6);
+    else if (kind < 0.76) rock(cx, cy, 0.85 + rng()*0.7);
+    else if (kind < 0.92) bush(cx, cy, 0.9 + rng()*0.5);
+    else log(cx, cy, 0.9 + rng()*0.4);
+  });
+  for (var fi = 0; fi < 62; fi++) {             // small filler, never on road
+    var fx2 = rng()*W, fy2 = rng()*H;
+    if (CF.roadDist(fx2, fy2) < (CF.PATH_HALF + 1.15)*T) continue;
+    var kk = fx2/T | 0, rr2 = fy2/T | 0;
+    if (map.plots[kk + ',' + rr2]) continue;
+    if (rng() < 0.55) bush(fx2, fy2, 0.42 + rng()*0.3);
+    else rock(fx2, fy2, 0.34 + rng()*0.3);
+  }
+
+  /* ── 4. plots: something a mason built, not a grey disc ── */
   Object.keys(map.plots).forEach(function (k) {
     var pr = k.split(','), cx = (+pr[0]+0.5)*T, cy = (+pr[1]+0.5)*T;
     g.save();
     g.translate(cx, cy);
-    g.fillStyle = 'rgba(0,0,0,0.42)';
-    g.beginPath(); g.ellipse(2, 4, T*0.50, T*0.24, 0, 0, 6.283); g.fill();
-    var pad = g.createRadialGradient(0, -4, 2, 0, 0, T*0.52);
-    pad.addColorStop(0, '#6d6857');
-    pad.addColorStop(1, '#494437');
-    g.fillStyle = pad;
-    g.beginPath(); g.ellipse(0, 0, T*0.48, T*0.24, 0, 0, 6.283); g.fill();
-    g.strokeStyle = 'rgba(160,152,126,0.75)'; g.lineWidth = 1.6;
-    g.beginPath(); g.ellipse(0, 0, T*0.48, T*0.24, 0, 0, 6.283); g.stroke();
-    g.strokeStyle = 'rgba(196,186,152,0.55)'; g.lineWidth = 1.4;
-    g.setLineDash([4, 5]);
-    g.beginPath(); g.ellipse(0, 0, T*0.34, T*0.17, 0, 0, 6.283); g.stroke();
-    g.setLineDash([]);
-    g.strokeStyle = 'rgba(214,200,150,0.85)'; g.lineWidth = 2;
-    for (var q = 0; q < 4; q++) {
-      var sx = q < 2 ? -1 : 1, sy = (q % 2) ? 1 : -1;
+    g.globalAlpha = 0.4; g.fillStyle = '#0d1610';
+    g.beginPath(); g.ellipse(SHX*0.6, SHY*0.6 + 2, T*0.52, T*0.27, 0, 0, 6.283); g.fill();
+    g.globalAlpha = 1;
+
+    var rimN = 9;
+    function ringPath(rad, sq) {
       g.beginPath();
-      g.moveTo(sx*T*0.44, sy*T*0.10);
-      g.lineTo(sx*T*0.44, sy*T*0.19);
-      g.lineTo(sx*T*0.30, sy*T*0.22);
+      for (var q = 0; q < rimN; q++) {
+        var aq = q/rimN*6.283 - 0.3;
+        var xq = Math.cos(aq)*rad, yq = Math.sin(aq)*rad*sq;
+        g[q ? 'lineTo' : 'moveTo'](xq, yq);
+      }
+      g.closePath();
+    }
+    g.fillStyle = '#3f3a30'; ringPath(T*0.50, 0.52); g.fill();        // kerb, shadow side
+    g.fillStyle = '#6c6455'; ringPath(T*0.47, 0.52); g.fill();        // kerb top
+    g.fillStyle = '#8b8270';                                          // lit edge
+    g.save(); g.clip();
+    g.beginPath(); g.ellipse(LX*T*0.2, LY*T*0.18, T*0.5, T*0.3, 0, 0, 6.283); g.fill();
+    g.restore();
+
+    var pad = g.createRadialGradient(LX*T*0.16, LY*T*0.12, 2, 0, 0, T*0.44);
+    pad.addColorStop(0, '#7b735f');
+    pad.addColorStop(1, '#4e4839');
+    g.fillStyle = pad; ringPath(T*0.40, 0.52); g.fill();
+
+    g.strokeStyle = 'rgba(28,24,18,0.55)'; g.lineWidth = 1.2;          // flagstone joints
+    for (var j = 0; j < 3; j++) {
+      var aj = j*1.047 + 0.3;
+      g.beginPath();
+      g.moveTo(Math.cos(aj)*T*0.40, Math.sin(aj)*T*0.21);
+      g.lineTo(Math.cos(aj + 3.14)*T*0.40, Math.sin(aj + 3.14)*T*0.21);
       g.stroke();
     }
-    g.restore();
-  });
-
-  /* scenery */
-  Object.keys(map.blocked).forEach(function (k) {
-    var pr = k.split(','), cx = (+pr[0]+0.5)*T, cy = (+pr[1]+0.5)*T;
-    var kind = rng();
-    g.save(); g.translate(cx + (rng()-0.5)*8, cy + (rng()-0.5)*8);
-    if (kind < 0.62) {                       // tree
-      var hgt = T*0.75 + rng()*T*0.5;
-      g.fillStyle = 'rgba(0,0,0,0.34)';
-      g.beginPath(); g.ellipse(2, 6, T*0.30, T*0.16, 0, 0, 6.283); g.fill();
-      g.fillStyle = '#3b2c1e';
-      g.fillRect(-2.5, -hgt*0.30, 5, hgt*0.34);
-      var lob = 3 + (rng()*2|0);
-      for (var L = 0; L < lob; L++) {
-        var lx = (rng()-0.5)*T*0.46, ly = -hgt*0.42 + (rng()-0.5)*T*0.34;
-        var rad = T*0.24 + rng()*T*0.14;
-        g.fillStyle = shade('#2a4a30', (rng()-0.35)*0.35);
-        g.beginPath(); g.arc(lx, ly, rad, 0, 6.283); g.fill();
-      }
-      g.fillStyle = 'rgba(150,190,140,0.18)';
-      g.beginPath(); g.arc(-T*0.12, -hgt*0.52, T*0.16, 0, 6.283); g.fill();
-    } else if (kind < 0.86) {                // rock
-      g.fillStyle = 'rgba(0,0,0,0.34)';
-      g.beginPath(); g.ellipse(2, 5, T*0.28, T*0.15, 0, 0, 6.283); g.fill();
-      g.fillStyle = '#5b5c58';
+    g.fillStyle = 'rgba(70,102,64,0.5)';                               // moss in the cracks
+    for (var ms = 0; ms < 5; ms++) {
+      var am = rng()*6.283, rm = T*0.38*(0.6 + rng()*0.4);
       g.beginPath();
-      for (var v = 0; v < 7; v++) {
-        var av = v/7*6.283, rv = T*(0.20+rng()*0.13);
-        g[v?'lineTo':'moveTo'](Math.cos(av)*rv, Math.sin(av)*rv*0.8 - 3);
-      }
-      g.closePath(); g.fill();
-      g.fillStyle = 'rgba(190,195,190,0.22)';
-      g.beginPath(); g.ellipse(-T*0.06, -T*0.10, T*0.11, T*0.07, -0.5, 0, 6.283); g.fill();
-    } else {                                 // scrub
-      for (var b = 0; b < 5; b++) {
-        g.strokeStyle = shade('#3d5a3a', (rng()-0.4)*0.4);
-        g.lineWidth = 1.6;
-        g.beginPath(); g.moveTo((b-2)*3, 6);
-        g.quadraticCurveTo((b-2)*4, -2, (b-2)*6, -9); g.stroke();
-      }
+      g.ellipse(Math.cos(am)*rm, Math.sin(am)*rm*0.52, 3.5, 2, 0, 0, 6.283); g.fill();
     }
     g.restore();
   });
 
-  /* the mouth they come out of, and the gate they are trying to reach */
+  /* ── 5. the ends of the road ── */
   var a0 = CF.posAt(T*1.6), a1 = CF.posAt(p.total - T*0.8);
   drawArch(g, a0.x, a0.y);
   drawGate(g, a1.x, a1.y);
@@ -166,39 +342,80 @@ A.bakeStatic = function () {
   return c;
 };
 
+/* slow cloud shadow, scrolled across the board each frame. One baked texture
+   drawn twice is far cheaper than building gradients per frame. */
+A.bakeClouds = function () {
+  var W = CF.COLS*T, H = CF.ROWS*T;
+  var c = cv(W, H), g = ctxOf(c);
+  var rng = CF.makeRng(1717);
+  for (var i = 0; i < 7; i++) {
+    var x = rng()*W, y = rng()*H, r = 300 + rng()*420;
+    var gr = g.createRadialGradient(x, y, r*0.15, x, y, r);
+    gr.addColorStop(0, 'rgba(10,20,16,0.16)');
+    gr.addColorStop(1, 'rgba(8,16,12,0)');
+    g.fillStyle = gr;
+    g.beginPath(); g.ellipse(x, y, r, r*0.62, rng()*3.14, 0, 6.283); g.fill();
+  }
+  return c;
+};
+
 function drawArch(g, x, y) {
   g.save(); g.translate(x, y);
-  g.fillStyle = '#1a1410';
-  g.beginPath(); g.ellipse(0, 0, T*0.55, T*1.0, 0, 0, 6.283); g.fill();
-  g.strokeStyle = '#4b4034'; g.lineWidth = 7;
-  g.beginPath(); g.ellipse(0, 0, T*0.62, T*1.05, 0, 0, 6.283); g.stroke();
-  g.strokeStyle = '#6b5b45'; g.lineWidth = 2;
-  g.beginPath(); g.ellipse(0, 0, T*0.62, T*1.05, 0, 0, 6.283); g.stroke();
+  g.globalAlpha = 0.4; g.fillStyle = '#0d1610';
+  g.beginPath(); g.ellipse(SHX, SHY, T*0.78, T*1.18, 0, 0, 6.283); g.fill();
+  g.globalAlpha = 1;
+  /* weathered stone jambs */
+  g.fillStyle = '#4b4438';
+  g.beginPath(); g.ellipse(0, 0, T*0.72, T*1.15, 0, 0, 6.283); g.fill();
+  g.fillStyle = '#635a49';
+  g.beginPath(); g.ellipse(LX*3, LY*3, T*0.70, T*1.12, 0, 0, 6.283); g.fill();
+  g.fillStyle = '#0b0810';
+  g.beginPath(); g.ellipse(0, 0, T*0.52, T*0.96, 0, 0, 6.283); g.fill();
   var gl = g.createRadialGradient(0, 0, 2, 0, 0, T*0.9);
-  gl.addColorStop(0, 'rgba(120,60,150,0.55)');
-  gl.addColorStop(1, 'rgba(120,60,150,0)');
+  gl.addColorStop(0, 'rgba(150,80,190,0.65)');
+  gl.addColorStop(0.6, 'rgba(96,44,140,0.35)');
+  gl.addColorStop(1, 'rgba(80,30,120,0)');
   g.fillStyle = gl;
-  g.beginPath(); g.ellipse(0, 0, T*0.5, T*0.95, 0, 0, 6.283); g.fill();
+  g.beginPath(); g.ellipse(0, 0, T*0.52, T*0.96, 0, 0, 6.283); g.fill();
+  g.strokeStyle = 'rgba(190,150,230,0.5)'; g.lineWidth = 2;
+  g.beginPath(); g.ellipse(0, 0, T*0.52, T*0.96, 0, 0, 6.283); g.stroke();
   g.restore();
 }
 
 function drawGate(g, x, y) {
-  g.save(); g.translate(x - T*0.35, y);
-  g.fillStyle = 'rgba(0,0,0,0.4)';
-  g.fillRect(-T*0.5, -T*1.5, T*1.4, T*3.0);
-  g.fillStyle = '#6d6455';
-  g.fillRect(-T*0.42, -T*1.42, T*1.2, T*2.85);
-  g.fillStyle = '#7e7565';
-  for (var r = 0; r < 8; r++) {
+  g.save(); g.translate(x - T*0.30, y);
+  g.globalAlpha = 0.42; g.fillStyle = '#0d1610';
+  g.fillRect(-T*0.46 + SHX, -T*1.56 + SHY, T*1.36, T*3.12);
+  g.globalAlpha = 1;
+  var wall = g.createLinearGradient(-T*0.5, 0, T*0.9, 0);
+  wall.addColorStop(0, '#7d7362');
+  wall.addColorStop(1, '#565045');
+  g.fillStyle = wall;
+  g.fillRect(-T*0.46, -T*1.50, T*1.30, T*3.00);
+  /* courses of stone, lit on their upper edge */
+  for (var r = 0; r < 9; r++) {
     for (var c2 = 0; c2 < 3; c2++) {
-      var ox = (r % 2) ? T*0.2 : 0;
-      g.fillRect(-T*0.40 + c2*T*0.40 + ox*0.4, -T*1.40 + r*T*0.36, T*0.36, T*0.32);
+      var ox = (r % 2) ? T*0.18 : 0;
+      var bx = -T*0.44 + c2*T*0.42 + ox*0.4;
+      var by = -T*1.48 + r*T*0.34;
+      g.fillStyle = 'rgba(0,0,0,0.18)';
+      g.fillRect(bx, by, T*0.38, T*0.30);
+      g.fillStyle = 'rgba(190,180,160,0.16)';
+      g.fillRect(bx, by, T*0.38, T*0.06);
     }
   }
-  g.fillStyle = '#33291f';
-  rr(g, -T*0.30, -T*0.62, T*0.62, T*1.25, 10); g.fill();
-  g.fillStyle = '#c9a227';
-  g.beginPath(); g.arc(T*0.01, 0, 6, 0, 6.283); g.fill();
+  g.fillStyle = '#241c14';                                   // the doorway
+  rr(g, -T*0.30, -T*0.66, T*0.66, T*1.32, 11); g.fill();
+  g.strokeStyle = '#8b7f66'; g.lineWidth = 2.5;
+  rr(g, -T*0.30, -T*0.66, T*0.66, T*1.32, 11); g.stroke();
+  var lamp = g.createRadialGradient(T*0.02, 0, 1, T*0.02, 0, T*0.5);
+  lamp.addColorStop(0, '#ffe9a8');
+  lamp.addColorStop(0.4, 'rgba(216,176,74,0.65)');
+  lamp.addColorStop(1, 'rgba(216,176,74,0)');
+  g.fillStyle = lamp;
+  g.beginPath(); g.arc(T*0.02, 0, T*0.5, 0, 6.283); g.fill();
+  g.fillStyle = '#ffeaa8';
+  g.beginPath(); g.arc(T*0.02, 0, 5, 0, 6.283); g.fill();
   g.restore();
 }
 
@@ -610,6 +827,7 @@ A.bakeBadge = function (elKey, size) {
 /* everything baked once at boot */
 A.build = function () {
   A.statics = A.bakeStatic();
+  A.clouds = A.bakeClouds();
   A.towers = {};
   CF.TOWER_ORDER.forEach(function (k) {
     A.towers[k] = [0,1,2].map(function (t) { return A.bakeTower(k, t); });

@@ -10,6 +10,13 @@
 
 var T = CF.TILE;
 
+/* The simulation stays free of any browser API -- it just says what happened
+   and something else decides whether to make a noise about it. That is what
+   keeps the whole rule-set runnable in node. */
+CF.onEvent = null;
+function say(kind, a, b) { if (CF.onEvent) CF.onEvent(kind, a, b); }
+CF.say = say;
+
 /* ── seeded rng ───────────────────────────────────────────────────── */
 CF.makeRng = function (seed) {
   var s = seed >>> 0 || 1;
@@ -169,6 +176,7 @@ CF.placeTower = function (S, key, c, r) {
   };
   S.towers.push(t);
   S.towerAt[c+','+r] = t;
+  say('build');
   return t;
 };
 
@@ -189,6 +197,7 @@ CF.sellTower = function (S, t) {
   S.towers.splice(i, 1);
   delete S.towerAt[t.c+','+t.r];
   S.gold += Math.floor(t.invested * CF.SELL_RATE);
+  say('sell');
   return true;
 };
 CF.stat = function (t) { return t.def.tiers[t.tier]; };
@@ -214,6 +223,7 @@ CF.startWave = function (S) {
     }
   });
   S.spawnQueue.sort(function (a, b) { return a.at - b.at; });
+  say('wave');
   return true;
 };
 
@@ -256,6 +266,7 @@ CF.hurt = function (S, e, amount, opts) {
     e.dead = true;
     var b = Math.round(e.def.bounty * CF.GOLD_MUL);
     S.gold += b; S.stats.earned += b; S.stats.kills++;
+    say('death', e.def.boss);
     S.fx.push({ kind:'death', x:e.x, y:e.y, t:0.4, max:0.4, col:e.def.col, r:e.r });
   }
   return amount;
@@ -295,6 +306,7 @@ CF.react = function (S, e, a, b, srcx, srcy) {
   var r = CF.REACT[CF.rk(a, b)];
   if (!r) return null;
   S.stats.reactions[r.key]++;
+  say('reaction', r.key);
   S.fx.push({ kind:'react', rk:r.key, x:e.x, y:e.y, t:0.7, max:0.7,
               col:r.col, name:r.name, seed:S.rng(),
               ux:(e.ux||1), uy:(e.uy||0),
@@ -357,7 +369,7 @@ CF.step = function (S, dt) {
     if (!S.spawnQueue.length && !S.enemies.length) {
       S.waveActive = false;
       S.gap = CF.WAVE_GAP;
-      if (S.wave >= CF.WAVES.length) { S.over = true; S.won = true; }
+      if (S.wave >= CF.WAVES.length) { S.over = true; S.won = true; say('win'); }
     }
   }
 
@@ -459,9 +471,10 @@ CF.step = function (S, dt) {
 
     if (e.d >= total) {
       S.lives -= e.def.leak; S.stats.leaks += e.def.leak;
+      say('leak');
       S.fx.push({ kind:'leak', x:e.x, y:e.y, t:0.6, max:0.6, col:'#ff5a5a' });
       S.enemies.splice(i, 1);
-      if (S.lives <= 0) { S.lives = 0; S.over = true; S.won = false; }
+      if (S.lives <= 0) { S.lives = 0; S.over = true; S.won = false; say('lose'); }
     }
   }
 
@@ -487,6 +500,7 @@ CF.step = function (S, dt) {
     }
     if (!tgt) continue;
     tw.cool = st.rof;
+    say('shot', tw.el);
     tw.ang = Math.atan2(tgt.y-tw.y, tgt.x-tw.x);
     tw.flash = 0.1; tw.shots++;
     var spd = tw.el === 'gale' ? 18 : tw.el === 'stone' ? 9 : 13;
@@ -596,6 +610,7 @@ CF.heroAbility = function (S, h) {
   if (!h.alive || h.cd > 0) return false;
   var a = h.def.ability;
   h.cd = a.cd;
+  say('ability', h.el);
   S.fx.push({ kind:'ability', x:h.x, y:h.y, t:0.5, max:0.5,
               col:CF.EL[h.el].col, r:a.radius*T, name:a.name });
   enemiesNear(S, h.x, h.y, a.radius*T, null).forEach(function (e) {
