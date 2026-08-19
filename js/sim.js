@@ -142,7 +142,9 @@ CF.newGame = function (seed) {
 /* ── heroes ───────────────────────────────────────────────────────── */
 CF.addHero = function (S, key) {
   var d = CF.HEROES[key];
+  if (!d) return null;
   if (S.heroes.some(function (h) { return h.key === key; })) return null;
+  if (S.heroes.length >= CF.HERO_SLOTS) return null;
   var start = CF.posAt(CF.path().total * 0.72);
   var h = {
     key:key, def:d, el:d.el,
@@ -358,6 +360,30 @@ CF.step = function (S, dt) {
 
   var total = CF.path().total;
 
+  /* Who does a hero actually stop? A hero used to halt EVERY foe in contact
+     range at once, so parking one on the road was a wall the whole column
+     ground against -- and a wall is not what a hero is for here. The cap makes
+     it structural: a hero holds up at most so many, nearest first, and the
+     rest walk straight past. */
+  for (var hz = 0; hz < S.heroes.length; hz++) S.heroes[hz].holding = 0;
+  for (var ez = 0; ez < S.enemies.length; ez++) S.enemies[ez].engaged = null;
+  if (CF.HERO_BLOCK_CAP > 0) {
+    for (var hq = 0; hq < S.heroes.length; hq++) {
+      var hero = S.heroes[hq];
+      if (!hero.alive) continue;
+      var near = [];
+      for (var eq = 0; eq < S.enemies.length; eq++) {
+        var en2 = S.enemies[eq];
+        if (en2.dead || en2.engaged) continue;
+        var dq = Math.hypot(en2.x - hero.x, en2.y - hero.y);
+        if (dq < en2.r + 16) near.push({ e:en2, d:dq });
+      }
+      near.sort(function (a, b) { return a.d - b.d; });
+      var take = Math.min(near.length, CF.HERO_BLOCK_CAP);
+      for (var nq = 0; nq < take; nq++) { near[nq].e.engaged = hero; hero.holding++; }
+    }
+  }
+
   /* enemies */
   for (var i = S.enemies.length - 1; i >= 0; i--) {
     var e = S.enemies[i];
@@ -414,13 +440,7 @@ CF.step = function (S, dt) {
     }
     if (e.dead) { S.enemies.splice(i, 1); continue; }
 
-    /* a hero standing on the road stops what walks into it */
-    e.engaged = null;
-    for (var hi = 0; hi < S.heroes.length; hi++) {
-      var h = S.heroes[hi];
-      if (!h.alive) continue;
-      if (Math.hypot(e.x-h.x, e.y-h.y) < e.r + 16) { e.engaged = h; break; }
-    }
+    /* engagement is decided in a capped pre-pass, before this loop */
     if (e.engaged) {
       e.engaged.hp -= (e.def.dps || Math.max(8, e.def.hp*0.09)) * dt;
       if (e.engaged.hp <= 0) CF.killHero(S, e.engaged);
@@ -585,6 +605,15 @@ CF.heroAbility = function (S, h) {
 
 CF.setRally = function (S, h, x, y) { h.rx = x; h.ry = y; };
 
+/* send one home to free the slot for a different element */
+CF.dismissHero = function (S, h) {
+  var i = S.heroes.indexOf(h);
+  if (i < 0) return false;
+  S.heroes.splice(i, 1);
+  S.gold += Math.floor((h.def.cost || 0) * CF.HERO_REFUND);
+  return true;
+};
+
 /* ── headless harness ─────────────────────────────────────────────────
    A scripted policy cannot judge feel and will always understate
    positional play. Use this to catch gross breakage only.
@@ -593,6 +622,7 @@ CF.sim = function (opts) {
   opts = opts || {};
   var mix = opts.mix || ['galeharp','stoneward','emberhearth','tidespring'];
   var S = CF.newGame(opts.seed || 1);
+  if (opts.goldTax) { S.gold -= opts.goldTax; S.taxDue = opts.goldTax; }
   if (opts.heroes) opts.heroes.forEach(function (k) { CF.addHero(S, k); });
 
   /* candidate plots, nearest to the road first, spread along it */
@@ -612,25 +642,60 @@ CF.sim = function (opts) {
     var tmp = plan[pi]; plan[pi] = plan[pj]; plan[pj] = tmp;
   }
 
+  function nextHero() {
+    if (!opts.buyHeroes) return null;
+    for (var q = 0; q < opts.buyHeroes.length; q++) {
+      var kq = opts.buyHeroes[q];
+      if (!S.heroes.some(function (h) { return h.key === kq; })) return kq;
+    }
+    return null;
+  }
+  /* gold held back so the hero stays reachable while the wall still grows */
+  function reserve() {
+    if (!opts.heroFirst) return 0;
+    var nk = nextHero();
+    return nk ? CF.HEROES[nk].cost : 0;
+  }
+
+  function buyHeroes() {
+    if (!opts.buyHeroes) return;
+    /* buy heroes when they can be afforded, so their COST is part of what is
+       being measured rather than a number nobody ever pays */
+
+      for (var bh = 0; bh < opts.buyHeroes.length; bh++) {
+        var bk = opts.buyHeroes[bh];
+        if (S.heroes.some(function (h) { return h.key === bk; })) continue;
+        var bc = CF.HEROES[bk].cost;
+        var need = bc + (opts.heroFirst ? 0 : (opts.heroReserve || 0));
+        if (S.gold >= need) {
+          S.gold -= bc; S.stats.spent += bc;
+          CF.addHero(S, bk);
+        }
+        break;                       // one at a time, cheapest first
+      }
+      }
+
   var idx = 0, guard = 0, maxT = opts.maxT || 2400;
   while (!S.over && S.t < maxT && guard++ < 4000000) {
     /* spend: place along the road in the given mix, then upgrade */
+    if (opts.heroFirst) buyHeroes();
     var placed = true;
     while (placed) {
       placed = false;
       if (idx < spots.length) {
         var key = plan[idx % plan.length];
-        if (S.gold >= CF.TOWERS[key].cost && S.towers.length < CAP) {
+        if (S.gold >= CF.TOWERS[key].cost + reserve() && S.towers.length < CAP) {
           var sp = spots[idx];
           if (CF.placeTower(S, key, sp.c, sp.r)) { idx++; placed = true; }
           else idx++;
         }
       }
     }
+    if (!opts.heroFirst) buyHeroes();
     if (S.towers.length >= CAP || idx >= spots.length) {
       for (var u = 0; u < S.towers.length; u++) {
         var cst = CF.upgradeCost(S.towers[u]);
-        if (cst != null && S.gold >= cst + 60) CF.upgradeTower(S, S.towers[u]);
+        if (cst != null && S.gold >= cst + 60 + reserve()) CF.upgradeTower(S, S.towers[u]);
       }
     }
     if (!S.waveActive && S.wave === 0) CF.startWave(S);

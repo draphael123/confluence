@@ -174,9 +174,14 @@ function syncPalette() {
 function buildHeroBar() {
   var host = $('heroes');
   host.innerHTML = '';
+  var cap = el('div', 'hero-cap',
+    'Field ' + S.heroes.length + ' of ' + CF.HERO_SLOTS +
+    ' \u2014 pick the element your towers lack');
+  host.appendChild(cap);
   CF.HERO_ORDER.forEach(function (key) {
     var d = CF.HEROES[key];
     var owned = S.heroes.some(function (h) { return h.key === key; });
+    var full = S.heroes.length >= CF.HERO_SLOTS;
     var card = el('div', 'hero' + (owned ? '' : ' locked'));
     card.dataset.key = key;
     card.innerHTML =
@@ -184,8 +189,10 @@ function buildHeroBar() {
         '<b>' + d.name + '</b><i>' + CF.EL[d.el].name + '</i></div>' +
       '<div class="hero-hp"><i></i></div>' +
       (owned
-        ? '<button class="hero-ab">' + d.ability.name + '</button>'
-        : '<button class="hero-buy">HIRE ' + d.cost + '</button>');
+        ? '<button class="hero-ab">' + d.ability.name + '</button>' +
+          (d.free ? '' : '<button class="hero-go">DISMISS</button>')
+        : '<button class="hero-buy"' + (full ? ' disabled' : '') + '>' +
+          (full ? 'NO SLOT' : 'HIRE ' + d.cost) + '</button>');
     host.appendChild(card);
 
     if (owned) {
@@ -199,9 +206,23 @@ function buildHeroBar() {
         syncHeroBar();
         hint('Click the board to send ' + d.name + ' there.');
       };
+      var go = card.querySelector('.hero-go');
+      if (go) go.onclick = function (ev) {
+        ev.stopPropagation();
+        var h = heroOf(key);
+        CF.dismissHero(S, h);
+        if (R.view.heroSel === h) R.view.heroSel = S.heroes[0] || null;
+        buildHeroBar();
+        toast(d.name + ' goes home. The slot is free for another element.');
+      };
     } else {
       card.querySelector('.hero-buy').onclick = function (ev) {
         ev.stopPropagation();
+        if (S.heroes.length >= CF.HERO_SLOTS) {
+          toast('You may field ' + CF.HERO_SLOTS + '. Dismiss one to make room \u2014 ' +
+                'a third would add nothing anyway.');
+          return;
+        }
         if (S.gold < d.cost) { toast('Not enough gold to hire ' + d.name + '.'); return; }
         S.gold -= d.cost; S.stats.spent += d.cost;
         var h = CF.addHero(S, key);
@@ -226,7 +247,7 @@ function syncHeroBar() {
     card.classList.toggle('sel', !!h && R.view.heroSel === h);
     if (!h) {
       var buy = card.querySelector('.hero-buy');
-      if (buy) buy.classList.toggle('poor', S.gold < CF.HEROES[card.dataset.key].cost);
+      if (buy && !buy.disabled) buy.classList.toggle('poor', S.gold < CF.HEROES[card.dataset.key].cost);
       return;
     }
     var bar = card.querySelector('.hero-hp i');

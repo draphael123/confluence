@@ -141,23 +141,32 @@ CF.HEROES = {
   },
   vess: {
     key:'vess', name:'Vess', title:'of the Tide', el:'tide',
-    cost:220,
+    cost:300,
     blurb:'Ranged. Stays back and finishes what the wall started.',
     hp:190, regen:5, speed:3.3, dmg:16, rof:0.55, range:3.4,
     ability:{ name:'Undertow', cd:16, radius:2.6, dmg:30, slow:0.5, slowTime:3,
               blurb:'A surge that lays Tide over a wide area and drags it back.' }
   },
   kestrel: {
-    key:'kestrel', name:'Kestrel', title:'the Galewalker', el:'gale',
+    key:'kestrel', name:'Kestrel', title:'the Duststep', el:'stone',
     cost:300,
-    blurb:'Fast. Gets to the lane you were not defending.',
+    blurb:'Fast, and the only one who carries Stone on foot. Gets grit into ' +
+          'the lane your Stonewards cannot reach.',
     hp:170, regen:7, speed:4.6, dmg:11, rof:0.34, range:1.2,
     ability:{ name:'Scour', cd:12, radius:1.9, dmg:26,
-              blurb:'A whirl of Gale, and half of three reactions.' }
+              blurb:'A whirl of grit, and half of three reactions.' }
   }
 };
 CF.HERO_ORDER = ['ashlin','vess','kestrel'];
+/* You may field two. Measured: ANY two heroes saturate -- a third adds nothing
+   at all, because the per-target reaction cooldown caps how often a foe can be
+   reacted no matter how many appliers you own. A cap turns a dead third
+   purchase into a real choice: which element are my towers short of? */
+CF.HERO_SLOTS = 2;
+CF.HERO_REFUND = 0.5;
 CF.HERO_RESPAWN = 12;
+/* how many foes one hero can physically hold up at once. 0 = walks through */
+CF.HERO_BLOCK_CAP = 2;
 
 /* -- enemies --------------------------------------------------------
    Each one exists to demand a VERB nothing else demands.

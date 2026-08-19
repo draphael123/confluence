@@ -258,3 +258,10 @@ button.big:hover:not(:disabled){background:linear-gradient(#544530,#332b1c);bord
 .set-ctl button{padding:6px 12px;font-size:12px;letter-spacing:.10em;min-width:52px}
 .set-ctl button.on{border-color:var(--gold);color:var(--gold);background:linear-gradient(#40361f,#2b2418)}
 .set-diff{grid-column:1/3;margin-top:8px;font-size:12.5px;color:var(--gold);font-style:italic}
+
+.hero-cap{
+  font-size:10.5px;letter-spacing:.10em;color:var(--ink-soft);
+  padding:2px 2px 6px;line-height:1.4;
+}
+.hero-go{width:100%;font-size:10px;padding:4px;margin-top:4px;letter-spacing:.10em;opacity:.75}
+.hero-go:hover{opacity:1;border-color:var(--bad);color:var(--bad)}

@@ -58,7 +58,24 @@ reaction beats firing many.
 Towers apply on a fixed line. A hero is the element you can put **anywhere,
 right now** — so you park towers to lay auras and steer a hero in to detonate
 the pairing you want. Ashlin carries Ember, Vess carries Tide, Kestrel carries
-Gale.
+Stone.
+
+**You may field two.** Measured: *any* two heroes saturate — a third adds
+literally nothing (19.5 → 19.9 lives, 453 → 452 reactions), because the
+per-target reaction cooldown caps how often a foe can be reacted no matter how
+many appliers you own. So the cap is not a nerf, it is what turns a dead third
+purchase into a real question: **which element are my towers short of?** You can
+dismiss a hero for half their fee and swap.
+
+Kestrel used to carry Gale and was measurably worthless — Gale is the element
+the towers already saturate (19,136 applications a run against Tide's 9,834), so
+a third Gale source had nothing to react with. Moving her to Stone, the one
+element no hero carried, took her from +0.0 lives to +4.2.
+
+Also worth recording: a hero's power is **not** its ability to block. Capping
+blocking from "every foe in contact range" to two changed the outcome by 0.2
+lives. Almost all of a hero's value is the element it lays — which is the role
+the design wanted them for.
 
 ---
 
@@ -80,7 +97,7 @@ Measured on the shipped numbers:
 | build | clears | dies around |
 |---|---|---|
 | all four elements | 18/21, avg 15.8 of 20 lives | — |
-| gale + stone | 16/21, avg 9.8 lives | wave 16 |
+| gale + stone | 17/21, avg 9.9 lives | wave 16 |
 | ember + tide | 0/21 | wave 16 |
 | **any single element** | **0/21** | **wave 8–9** |
 
@@ -105,6 +122,15 @@ Two caveats worth stating plainly. The sweep's policy assigns elements to plots
 elements should clear more reliably than 18/21. And a scripted policy cannot
 judge feel at all: **the numbers are validated, the feel is not.** That needs a
 human playtest.
+
+## What the harness could *not* answer
+
+Hero pricing. Taking 150 gold out of a wall's early income costs it **9 lives** —
+early gold compounds that steeply — so *when* you buy a hero dominates *what it
+costs*, and every scripted purchase policy either buys on the last wave (useless)
+or reserves from wave 1 and starves the opening (catastrophic). That is a player
+judgment call, so the 300g price is provisional and wants a playtest, not another
+bot.
 
 ## Difficulty
 
@@ -141,6 +167,7 @@ nothing.
 | `js/game.js` | screens, input, the loop |
 | `tools/harness.js` | verb checks and the seeded balance sweep |
 | `tools/diagnose-reactions.js` | why a reaction is or is not getting played |
+| `tools/diagnose-heroes.js` | isolates a hero's blocking, damage and element channels |
 | `tools/tune-aurasplash.js` | searches for the flattest reaction spread |
 
 ## Controls
