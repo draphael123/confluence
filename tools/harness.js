@@ -14,6 +14,11 @@ module.exports = CF;
 if (require.main !== module) return;
 
 var mode = process.argv[2] || 'all';
+var mapArg = process.argv[3];
+if (mapArg) {
+  var mi = CF.MAPS.map(function (m) { return m.key; }).indexOf(mapArg);
+  if (mi >= 0) { CF.setMap(mi); console.log('road: ' + CF.MAPS[mi].name + '\n'); }
+}
 var T = CF.TILE;
 
 function geom() {

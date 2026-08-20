@@ -526,6 +526,14 @@ R.draw = function (g, S, dt) {
         g.arc(f.x + Math.cos(au2)*ru2, f.y + Math.sin(au2)*ru2 - k*8, 2.4*(1-k)+0.6, 0, 6.283);
         g.fill();
       }
+    } else if (f.kind === 'dmg') {
+      g.globalAlpha = Math.min(1, (1-k)*2);
+      g.font = '600 11px Georgia, serif';
+      g.textAlign = 'center';
+      g.lineWidth = 2.6; g.strokeStyle = 'rgba(0,0,0,0.8)';
+      g.strokeText(f.n, f.x, f.y - k*18);
+      g.fillStyle = f.col;
+      g.fillText(f.n, f.x, f.y - k*18);
     } else if (f.kind === 'coin') {
       g.globalAlpha = Math.min(1, (1-k)*2.2);
       g.font = '700 12px Georgia, serif';

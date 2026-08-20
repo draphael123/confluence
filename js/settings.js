@@ -20,6 +20,8 @@ CF.SETTINGS_DEF = [
   { key:'volume', label:'Sound', type:'choice',
     options:['off','low','normal','high'], def:'normal',
     note:'Each reaction has its own voice, so you can hear which one fired without looking at it.' },
+  { key:'dmgnums', label:'Damage numbers', type:'toggle', def:false,
+    note:'Prints what each hit actually took off. Useful for seeing how little plate lets through.' },
   { key:'names', label:'Reaction names', type:'toggle', def:true,
     note:'Prints STEAM, FROST and the rest above the foe it happened to.' },
   { key:'flash', label:'Effect brightness', type:'choice',

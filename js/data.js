@@ -281,14 +281,41 @@ CF.START_GOLD = 190;
 CF.START_LIVES = 20;
 CF.WAVE_GAP = 8.0;   // quiet between waves; call it early for the bonus
 
-/* the road. tile coordinates; enemies walk this polyline. */
-CF.PATH = [
-  [-1.5, 2], [6, 2], [6, 7], [2, 7], [2, 12], [10, 12],
-  [10, 4], [15, 4], [15, 13], [20, 13], [20, 7], [25.5, 7]
+/* ── the roads ───────────────────────────────────────────────────────
+   Two, and they ask different questions of the same rule-set.
+
+   The Draymoor Road bends constantly, so a plot covers one stretch and the
+   puzzle is the ORDER of elements along it.
+
+   The Weir runs in long parallel reaches three and a half tiles apart, so a
+   plot set between two of them covers both -- one tower can be the second
+   half of a pairing twice on the same walk. Fewer plots do more, and the
+   question shifts from order to placement.
+*/
+CF.MAPS = [
+  {
+    key:'draymoor', name:'The Draymoor Road',
+    blurb:'Bends constantly. Every plot covers one stretch, so the puzzle is ' +
+          'the order your elements sit in.',
+    plotSpacing:3.6,
+    path:[ [-1.5, 2], [6, 2], [6, 7], [2, 7], [2, 12], [10, 12],
+           [10, 4], [15, 4], [15, 13], [20, 13], [20, 7], [25.5, 7] ]
+  },
+  {
+    key:'weir', name:'The Weir',
+    blurb:'Long reaches doubling back on themselves. A plot between two of ' +
+          'them reaches both \u2014 one tower can be the second half twice.',
+    plotSpacing:3.9,
+    path:[ [-1.5, 13], [20, 13], [20, 9.5], [4, 9.5], [4, 6],
+           [20, 6], [20, 2.5], [25.5, 2.5] ]
+  }
 ];
+
+CF.mapIndex = 0;
+CF.PATH = CF.MAPS[0].path;
+CF.PLOT_SPACING = CF.MAPS[0].plotSpacing;
+CF.PATH_HALF = 0.95;   // tiles either side of the centreline that count as road
+
 /* where the Breach is drawn. Decoration only -- the road itself is
    unchanged, so plots and balance do not move. */
 CF.ARCH_D = 80;
-
-CF.PATH_HALF = 0.95;   // tiles either side of the centreline that count as road
-CF.PLOT_SPACING = 3.6; // tiles of road between one pair of buildable plots and the next

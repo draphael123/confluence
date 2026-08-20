@@ -825,6 +825,11 @@ A.bakeBadge = function (elKey, size) {
 };
 
 /* everything baked once at boot */
+/* the ground painting belongs to one road; changing roads must repaint it */
+A.rebakeMap = function () {
+  A.statics = A.bakeStatic();
+};
+
 A.build = function () {
   A.statics = A.bakeStatic();
   A.clouds = A.bakeClouds();

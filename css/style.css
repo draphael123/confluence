@@ -359,3 +359,142 @@ button.big:hover:not(:disabled){background:linear-gradient(#544530,#332b1c);bord
   from{opacity:0;transform:translateY(10px) scale(.99)}
   to{opacity:1;transform:none}
 }
+
+/* ── how it works, on the front page ─────────────────────── */
+.howto{
+  list-style:none;counter-reset:ht;margin:22px auto 4px;padding:0;
+  max-width:560px;text-align:left;display:flex;flex-direction:column;gap:9px;
+}
+.howto li{
+  counter-increment:ht;position:relative;padding-left:34px;
+  font-size:13.5px;line-height:1.6;color:var(--ink-soft);
+}
+.howto li::before{
+  content:counter(ht);position:absolute;left:0;top:-1px;
+  width:22px;height:22px;border-radius:50%;
+  border:1px solid var(--edge);background:var(--panel-lt);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:var(--gold);
+}
+.howto b{color:var(--ink);font-weight:400}
+.howto em{font-style:italic;color:var(--gold)}
+
+/* ── road picker ─────────────────────────────────────────── */
+.roadpick{margin:20px auto 0;max-width:560px}
+.rp-label{
+  font-size:10px;letter-spacing:.28em;text-transform:uppercase;
+  color:var(--ink-soft);margin-bottom:7px;
+}
+.rp-row{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
+.rp{padding:9px 18px;font-size:12.5px}
+.rp.on{border-color:var(--gold);color:var(--gold);background:linear-gradient(#40361f,#2b2418)}
+.rp-blurb{
+  font-size:12.5px;line-height:1.6;color:var(--ink-soft);
+  margin:10px 0 0;font-style:italic;min-height:34px;
+}
+
+/* ── touch: nothing on the board should pan, zoom or select ── */
+#board{touch-action:none}
+#stage{touch-action:manipulation}
+@media (pointer:coarse){
+  button{min-height:40px}
+  .pal{min-height:52px}
+  .tab{min-height:40px}
+  .set-ctl button{min-height:40px;min-width:62px}
+  #board{cursor:default}
+}
+
+/* ── phones and small tablets: stack it ──────────────────── */
+@media (max-width:860px){
+  #stage{flex-direction:column}
+  #boardwrap{flex:0 0 auto;padding:6px;width:100%}
+  #board{width:100%;height:auto;max-height:52vh}
+  #side{
+    flex:1 1 auto;width:100%;border-left:none;border-top:1px solid var(--edge);
+    flex-direction:column;padding:8px;gap:8px;overflow-y:auto;
+  }
+  #palette{
+    display:grid;grid-template-columns:repeat(2,1fr);gap:6px;
+  }
+  .pal{grid-template-columns:14px 20px 1fr auto;padding:8px 8px;gap:2px 6px}
+  .pal-name{font-size:12.5px}
+  .pal-el{font-size:9px}
+  #heroes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .hero-cap{grid-column:1/-1}
+  .side-h{margin-top:2px}
+
+  #topbar{gap:10px;padding:6px 9px;flex-wrap:wrap}
+  .stat b{font-size:16px}
+  .wavebox{min-width:0;flex:1 1 130px}
+  .next{display:none}
+  /* Two rows, declared rather than hoped for. Left to flex-wrap the bar took
+     three rows and a sixth of a phone screen. */
+  #topbar{
+    display:grid;
+    grid-template-columns:auto auto 1fr;
+    grid-template-areas:'gold toll wave' 'go go sp';
+    row-gap:6px;column-gap:10px;align-items:center;
+  }
+  #topbar > .stat:nth-child(1){grid-area:gold}
+  #topbar > .stat:nth-child(2){grid-area:toll}
+  #topbar .wavebox{grid-area:wave;min-width:0}
+  #topbar #btn-wave{grid-area:go;min-width:0;font-size:11.5px;padding:9px 6px}
+  #topbar .sp{grid-area:sp;gap:3px;margin-left:0;justify-content:flex-end}
+  #topbar .sp button{padding:7px;min-width:30px;font-size:10.5px}
+  .stat{gap:4px}
+  .stat .tag{font-size:9px;letter-spacing:.12em}
+
+  #banner .bn-n{font-size:32px}
+  #banner{top:26%}
+  #hint{display:none}
+  .howto{margin-top:16px}
+}
+
+/* ── narrow phones ───────────────────────────────────────── */
+@media (max-width:520px){
+  #scr-title h1{font-size:clamp(34px,12vw,54px);letter-spacing:.22em;text-indent:.22em}
+  .epigraph{font-size:14px}
+  .howto li{font-size:12.5px;padding-left:30px}
+  #scr-title{align-items:stretch;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .title-inner{padding:16px 12px 28px;justify-content:flex-start;min-height:100%}
+  .elems{gap:14px;margin:18px 0 4px}
+  .orb{width:26px;height:26px}
+  .title-btns{flex-direction:column;width:100%;max-width:300px;margin:0 auto}
+  .title-btns button{width:100%}
+
+  #board{max-height:42vh}
+  #palette{grid-template-columns:repeat(2,1fr)}
+  #heroes{grid-template-columns:1fr}
+  .codex-plate,.result-plate{padding:16px 14px;max-height:92vh;border-radius:0}
+  #codex,#settings{padding:0}
+  .react-grid,.best-grid{grid-template-columns:1fr}
+  .best-card{grid-template-columns:62px 1fr;gap:9px}
+  .best-art{width:60px;height:60px}
+  .bc-stats{grid-template-columns:repeat(2,auto)}
+  .set-row{grid-template-columns:1fr;gap:8px}
+  .set-ctl{grid-row:auto;justify-content:flex-start;flex-wrap:wrap}
+  .tabs{gap:2px}
+  .tab{padding:8px 9px;font-size:11px;letter-spacing:.06em}
+  .pause-plate{padding:18px 16px;width:100%}
+  .pause-btns{min-width:0;width:100%}
+}
+
+/* Landscape phones: the board must be constrained by HEIGHT here, not width.
+   Releasing max-height let it grow to the full 800px column and overflow the
+   viewport by a quarter, which forced the whole page to scroll sideways. */
+@media (max-height:560px) and (orientation:landscape){
+  #stage{flex-direction:row;min-height:0}
+  #boardwrap{flex:1 1 auto;min-width:0;min-height:0;padding:5px}
+  #board{width:auto;height:auto;max-width:100%;max-height:100%}
+  #side{
+    flex:0 0 204px;border-top:none;border-left:1px solid var(--edge);
+    padding:6px;gap:6px;
+  }
+  #palette{grid-template-columns:1fr;gap:4px}
+  .pal{min-height:44px;padding:5px 7px}
+  .pal-name{font-size:12px}
+  #heroes{grid-template-columns:1fr;gap:4px}
+  .hero{padding:5px 7px}
+  #banner .bn-n{font-size:26px}
+  #topbar{padding:4px 8px;row-gap:4px}
+}

@@ -34,6 +34,7 @@ G.boot = function () {
 
   CF.loadSettings();
   CF.applyDifficulty();
+  CF.SHOW_DMG = !!CF.settings.dmgnums;
 
   /* browsers will not start audio before a gesture */
   function wake() { CF.audio.start(); CF.audio.resume(); CF.audio.syncVolume(); }
@@ -100,8 +101,28 @@ G.boot = function () {
   cv.addEventListener('mouseleave', function () { R.view.hover = null; R.view.ghost = null; });
   cv.addEventListener('click', onClick);
   cv.addEventListener('contextmenu', onRight);
+
+  /* On a touch screen there is no hover, so the ghost has to follow the finger
+     while it is down and the placement happens where it lifts. */
+  cv.addEventListener('touchstart', function (ev) {
+    if (!ev.touches.length) return;
+    ev.preventDefault();
+    onMove(ev.touches[0]);
+  }, { passive:false });
+  cv.addEventListener('touchmove', function (ev) {
+    if (!ev.touches.length) return;
+    ev.preventDefault();
+    onMove(ev.touches[0]);
+  }, { passive:false });
+  cv.addEventListener('touchend', function (ev) {
+    ev.preventDefault();
+    var t = ev.changedTouches && ev.changedTouches[0];
+    if (t) onClick(t);
+    R.view.ghost = null;
+  }, { passive:false });
   document.addEventListener('keydown', onKey);
 
+  buildRoadPick();
   screen('title');
   CF.booted = true;
   $('boot').remove();
@@ -469,7 +490,7 @@ function onClick(ev) {
     var t = CF.placeTower(S, picked, c, r);
     if (t) {
       R.view.sel = t;
-      if (!ev.shiftKey) { picked = null; R.view.ghost = null; }
+      if (!ev.shiftKey) { picked = null; R.view.ghost = null; }   // touch has no shift
       syncPalette();
     }
     return;
@@ -531,6 +552,7 @@ function buildSettings() {
         CF.saveSettings();
         if (d.key === 'difficulty') CF.applyDifficulty();
         if (d.key === 'volume') { CF.audio.start(); CF.audio.syncVolume(); }
+        if (d.key === 'dmgnums') CF.SHOW_DMG = !!CF.settings.dmgnums;
         if (d.key === 'speed' && S) setSpeed(parseInt(val, 10) || 1);
         buildSettings();
       };
@@ -854,7 +876,28 @@ function codexKeys(host) {
     CF.PLACE.arch + ' and they only ever go one way.'));
 }
 
-/* ── teaching the one rule ────────────────────────────────────────────
+/* ── choosing a road ──────────────────────────────────────────────── */
+function buildRoadPick() {
+  var host = $('roadpick');
+  if (!host) return;
+  host.innerHTML = '<div class="rp-label">The road</div>';
+  var row = el('div', 'rp-row');
+  CF.MAPS.forEach(function (m, i) {
+    var b = el('button', 'rp' + (i === CF.mapIndex ? ' on' : ''), m.name);
+    b.onclick = function () {
+      if (i === CF.mapIndex) return;
+      CF.setMap(i);
+      CF.art.rebakeMap();
+      stopIntro(); startIntro();
+      buildRoadPick();
+    };
+    row.appendChild(b);
+  });
+  host.appendChild(row);
+  host.appendChild(el('p', 'rp-blurb', CF.MAPS[CF.mapIndex].blurb));
+}
+
+/* ── teaching the one rule -───────────────────────────────────────────
    The book explains it, but a player who never opens the book will build a
    wall of one colour and conclude the game is unfair. These fire once, in
    response to what the player has actually done.

@@ -124,6 +124,18 @@ function buildMap() {
 var MAP = null;
 CF.map = function () { if (!MAP) MAP = buildMap(); return MAP; };
 
+/* Choosing a road invalidates every cached derivation of it. Forgetting one
+   of these is exactly how you get a new map drawn over the old map's plots. */
+CF.setMap = function (i) {
+  i = Math.max(0, Math.min(CF.MAPS.length - 1, i|0));
+  CF.mapIndex = i;
+  CF.PATH = CF.MAPS[i].path;
+  CF.PLOT_SPACING = CF.MAPS[i].plotSpacing;
+  PATH = null;
+  MAP = null;
+  return CF.MAPS[i];
+};
+
 CF.canBuild = function (S, c, r) {
   if (c < 0 || r < 0 || c >= CF.COLS || r >= CF.ROWS) return false;
   var k = c+','+r;
@@ -266,6 +278,11 @@ CF.hurt = function (S, e, amount, opts) {
   }
   e.hp -= amount;
   e.hitFlash = 0.12;
+  if (CF.SHOW_DMG && amount >= 1) {
+    S.fx.push({ kind:'dmg', x:e.x + (S.rng()-0.5)*10, y:e.y - e.r*0.6,
+                t:0.6, max:0.6, n:Math.round(amount),
+                col:opts.reaction ? '#ffd98a' : '#e8e0cc' });
+  }
   e.knock = Math.min(1, (e.knock || 0) + (opts.reaction ? 0.9 : 0.45));
   if (e.hp <= 0) {
     e.dead = true;
