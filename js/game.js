@@ -129,7 +129,7 @@ function newRun() {
   CF.applyDifficulty();
   S = CF.newGame((Math.random()*1e9)|0);
   seen = {};
-  picked = null; paused = false; ended = false;
+  picked = null; paused = false; ended = false; taught = {};
   hudPrev = { gold:null, lives:null, wave:0 };
   $('pause-veil').classList.remove('on');
   R.view = { hover:null, sel:null, ghost:null, heroSel:S.heroes[0] };
@@ -154,6 +154,7 @@ function tick(dt) {
     if (!CF.settings.autowave && !S.waveActive && S.wave > 0) S.gap = 1e9;
     for (var i = 0; i < speed; i++) CF.step(S, dt);
     S.enemies.forEach(function (e) { seen[e.key] = true; });
+    tutorialTick();
   }
   /* Outside the guard above, and latched: the run can end on any path, and a
      finished run that never shows its result is the worst failure here. */
@@ -853,15 +854,60 @@ function codexKeys(host) {
     CF.PLACE.arch + ' and they only ever go one way.'));
 }
 
-/* ── ending ──────────────────────────────────────────────────────────── */
+/* ── teaching the one rule ────────────────────────────────────────────
+   The book explains it, but a player who never opens the book will build a
+   wall of one colour and conclude the game is unfair. These fire once, in
+   response to what the player has actually done.
+*/
+var taught = {};
+function teach(key, msg) {
+  if (taught[key]) return;
+  taught[key] = 1;
+  toast(msg);
+}
+
+function tutorialTick() {
+  if (!S || S.wave === 0) return;
+  var els = {};
+  S.towers.forEach(function (t) { els[t.el] = (els[t.el] || 0) + 1; });
+  var kinds = Object.keys(els).length;
+  var total = 0;
+  Object.keys(S.stats.reactions).forEach(function (k) { total += S.stats.reactions[k]; });
+
+  if (S.towers.length >= 1 && kinds === 1) {
+    teach('one', 'One element on its own never reacts. Put a DIFFERENT element ' +
+                 'further along the road and watch what happens when they meet.');
+  }
+  if (kinds >= 2 && total === 0 && S.wave >= 2) {
+    teach('order', 'Two elements, but nothing is pairing. They have to reach the ' +
+                   'same foe — put them close enough that the first aura is still ' +
+                   'on it when the second arrives.');
+  }
+  if (total >= 1) {
+    teach('first', 'That was a confluence. The two elements spent themselves, and ' +
+                   'that foe will not hold a new one for a moment.');
+  }
+  if (S.stats.leaks > 0) {
+    teach('leak', 'One got through. The toll is what you are actually defending — ' +
+                  'at zero, the road is theirs.');
+  }
+  var golems = S.enemies.some(function (e) { return e.def.armor > 0 && e.shredT <= 0; });
+  if (golems && !els.gale) {
+    teach('grit', 'Plate turns almost everything. Gale and Stone together scour it ' +
+                  'off — without that, your wall is barely scratching them.');
+  }
+}
+
+/* ── ending -─────────────────────────────────────────────────────────── */
 function endRun() {
   screen('result');
   var won = S.won;
-  $('r-title').textContent = won ? 'THE ROAD HELD' : 'THE GATE IS BROKEN';
+  $('r-title').textContent = won ? 'THE ROAD HELD' : 'THE TOLL IS BROKEN';
   $('r-title').className = won ? 'win' : 'lose';
+  $('r-over').textContent = won ? 'the ninth toll stands' : CF.PLACE.gate;
   $('r-sub').textContent = won
-    ? 'Eighteen waves, and the confluence never failed you.'
-    : 'You reached wave ' + S.wave + ' of ' + CF.WAVES.length + '.';
+    ? 'Eighteen waves up ' + CF.PLACE.road + ', and the pairs never failed you.'
+    : 'They reached the gate on wave ' + S.wave + ' of ' + CF.WAVES.length + '.';
 
   var tot = 0;
   Object.keys(S.stats.reactions).forEach(function (k) { tot += S.stats.reactions[k]; });
@@ -875,6 +921,8 @@ function endRun() {
     ['Damage from reactions', share + '%'],
     ['Gold earned', Math.round(S.stats.earned)]
   ];
+  var knownNow = Object.keys(CF.ENEMIES).filter(function (k) { return met[k]; }).length;
+  rows.push(['Recorded in the book', knownNow + ' of ' + Object.keys(CF.ENEMIES).length]);
   var box = $('r-lines');
   box.innerHTML = rows.map(function (r) {
     return '<div class="ledger-row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>';
@@ -893,6 +941,31 @@ function endRun() {
     best.appendChild(bar);
   });
   box.appendChild(best);
+
+  /* say something true about how THIS run went, not a stock line */
+  var top = null, topN = -1, used = 0;
+  Object.keys(S.stats.reactions).forEach(function (k) {
+    if (S.stats.reactions[k] > 0) used++;
+    if (S.stats.reactions[k] > topN) { topN = S.stats.reactions[k]; top = k; }
+  });
+  var line;
+  if (tot === 0) {
+    line = 'Not one confluence the whole way. A wall of one colour is a wall ' +
+           'that does almost nothing \u2014 that is the entire lesson of this road.';
+  } else if (used <= 2) {
+    line = 'You leaned on ' + used + ' of the six. There is a pairing for every ' +
+           'thing that walks up here, and most of them you never reached for.';
+  } else if (share >= 70) {
+    line = 'Most of what you did was done by the pairs, not the towers. That is ' +
+           'the road being played the way it was built.';
+  } else if (won) {
+    line = 'Held, and mostly by ' + top.toUpperCase() + '. Worth asking what ' +
+           'the other five would have saved you.';
+  } else {
+    line = 'It came apart at wave ' + S.wave + '. Look at which pairing you never ' +
+           'once had ready, and put it on the road earlier.';
+  }
+  $('r-closing').textContent = line;
 }
 
 window.addEventListener('DOMContentLoaded', function () {

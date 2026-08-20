@@ -158,6 +158,22 @@ Under a deliberately absurd worst case — 76 foes, 24 simultaneous reactions,
 23 ground zones — a frame costs 1.09ms to draw and 0.09ms to step, about 14×
 inside the 60fps budget.
 
+## The Wardwright's Book
+
+Four tabs: **Confluences** (the six pairings), **Bestiary**, **The Wall**
+(towers and heroes), **Commands**. The bestiary fills in as things actually
+reach you — blacked out until seen — and what it records for each foe is the
+**verb it demands**, because that is the only thing about it you can act on.
+Every entry carries a field note.
+
+## Teaching the rule without a tutorial wall
+
+The hook fails badly if a player never grasps it: they build one colour, lose,
+and conclude the game is unfair. So the game watches what you actually do and
+says something once, at the moment it is true — when your wall is all one
+element, when two elements are on the road but never pairing, when the first
+confluence lands, when plate is turning your fire and you own no Gale.
+
 ## Accessibility
 
 The entire rule-set is communicated by hue, which is not an acceptable single
@@ -188,6 +204,7 @@ nothing.
 | `tools/harness.js` | verb checks and the seeded balance sweep |
 | `tools/diagnose-reactions.js` | why a reaction is or is not getting played |
 | `tools/diagnose-heroes.js` | isolates a hero's blocking, damage and element channels |
+| `js/audio.js` | the synthesised score — no asset files |
 | `tools/tune-aurasplash.js` | searches for the flattest reaction spread |
 
 ## Controls

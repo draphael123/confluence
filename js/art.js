@@ -335,7 +335,7 @@ A.bakeStatic = function () {
   });
 
   /* ── 5. the ends of the road ── */
-  var a0 = CF.posAt(T*1.6), a1 = CF.posAt(p.total - T*0.8);
+  var a0 = CF.posAt(CF.ARCH_D), a1 = CF.posAt(p.total - T*0.8);
   drawArch(g, a0.x, a0.y);
   drawGate(g, a1.x, a1.y);
 

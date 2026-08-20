@@ -286,5 +286,9 @@ CF.PATH = [
   [-1.5, 2], [6, 2], [6, 7], [2, 7], [2, 12], [10, 12],
   [10, 4], [15, 4], [15, 13], [20, 13], [20, 7], [25.5, 7]
 ];
+/* where the Breach is drawn. Decoration only -- the road itself is
+   unchanged, so plots and balance do not move. */
+CF.ARCH_D = 80;
+
 CF.PATH_HALF = 0.95;   // tiles either side of the centreline that count as road
 CF.PLOT_SPACING = 3.6; // tiles of road between one pair of buildable plots and the next

@@ -13,13 +13,14 @@
 <section id="scr-title" class="screen">
   <canvas id="introcv"></canvas>
   <div class="title-inner">
+  <p class="overline">The Draymoor Road &middot; the Ninth Toll</p>
   <h1>CONFLUENCE</h1>
   <div class="rule"></div>
-  <p class="hook">
-    Nothing on this road dies to one element.<br>
-    A foe carries <b>one</b> element at a time &mdash; lay a <b>different</b> one
-    on top of it and the two react.
+  <p class="epigraph">
+    &ldquo;Nothing on this road dies to one thing.<br>
+    Learn what pairs, or learn to count what gets past you.&rdquo;
   </p>
+  <p class="attrib">&mdash; the wardwright&rsquo;s book, first page</p>
   <div class="elems">
     <div class="elem"><span class="orb" style="--c:#ff6a3c"></span>Ember</div>
     <div class="elem"><span class="orb" style="--c:#4aa8d8"></span>Tide</div>
@@ -27,8 +28,8 @@
     <div class="elem"><span class="orb" style="--c:#d0a05a"></span>Stone</div>
   </div>
   <div class="title-btns">
-    <button id="btn-begin" class="big">HOLD THE ROAD</button>
-    <button id="btn-codex" class="ghost">The Codex</button>
+    <button id="btn-begin" class="big">TAKE THE WALL</button>
+    <button id="btn-codex" class="ghost">The Book</button>
     <button id="btn-settings" class="ghost">Settings</button>
   </div>
   <p class="intro-cap" id="intro-cap"></p>
@@ -122,12 +123,14 @@
 <!-- ══ RESULT ═════════════════════════════════════════════════════ -->
 <section id="scr-result" class="screen">
   <div class="result-plate">
+    <p class="overline" id="r-over">the ninth toll</p>
     <h2 id="r-title">THE ROAD HELD</h2>
     <p id="r-sub"></p>
     <div id="r-lines"></div>
+    <p id="r-closing" class="closing"></p>
     <div class="result-foot">
-      <button id="btn-again" class="big">AGAIN</button>
-      <button id="btn-menu" class="ghost">TITLE</button>
+      <button id="btn-again" class="big">TAKE IT AGAIN</button>
+      <button id="btn-menu" class="ghost">Back to the road</button>
     </div>
   </div>
 </section>

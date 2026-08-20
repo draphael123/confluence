@@ -189,6 +189,9 @@ CF.upgradeTower = function (S, t) {
   if (cost == null || S.gold < cost) return false;
   S.gold -= cost; S.stats.spent += cost;
   t.invested += cost; t.tier++;
+  S.fx.push({ kind:'upgrade', x:t.x, y:t.y - CF.TILE*0.4, t:0.6, max:0.6,
+              col:CF.EL[t.el].col, seed:S.rng() });
+  say('build');
   return true;
 };
 CF.sellTower = function (S, t) {

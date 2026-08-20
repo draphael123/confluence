@@ -47,6 +47,22 @@ R.draw = function (g, S, dt) {
     g.restore();
   }
 
+  /* the Breach pulses while a wave is still walking out of it */
+  if (S.spawnQueue && S.spawnQueue.length) {
+    var ap = CF.posAt(CF.ARCH_D);
+    var pulse = 0.45 + 0.55*Math.abs(Math.sin(S.t*3.1));
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = 0.5*pulse*FLASH;
+    var bg2 = g.createRadialGradient(ap.x, ap.y, 2, ap.x, ap.y, T*1.6);
+    bg2.addColorStop(0, '#c47ff0');
+    bg2.addColorStop(0.5, 'rgba(140,70,190,0.5)');
+    bg2.addColorStop(1, 'rgba(120,50,170,0)');
+    g.fillStyle = bg2;
+    g.beginPath(); g.ellipse(ap.x, ap.y, T*0.8, T*1.45, 0, 0, 6.283); g.fill();
+    g.restore();
+  }
+
   /* ── ground zones left by MAGMA and MIRE ── */
   S.zones.forEach(function (z) {
     var k = Math.max(0, z.t/z.max);
@@ -177,6 +193,7 @@ R.draw = function (g, S, dt) {
 
   /* ── enemies ── */
   S.enemies.forEach(function (e) {
+    if (e.d < CF.ARCH_D - T*0.5) return;    // still inside the Breach
     var img = A.enemies && A.enemies[e.key];
 
     /* the aura is the single most important thing on the screen: it is the
@@ -494,6 +511,19 @@ R.draw = function (g, S, dt) {
         var rd = (f.r||10) * (0.3 + k*1.5);
         g.beginPath();
         g.arc(f.x + Math.cos(ad)*rd, f.y + Math.sin(ad)*rd, 3*(1-k)+1, 0, 6.283);
+        g.fill();
+      }
+    } else if (f.kind === 'upgrade') {
+      g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = (1-k)*0.9*FLASH;
+      g.strokeStyle = f.col; g.lineWidth = 3 - k*2;
+      g.beginPath(); g.arc(f.x, f.y, T*0.35 + k*T*0.9, 0, 6.283); g.stroke();
+      var ur = mulberry(f.seed || 0.2);
+      for (var uq = 0; uq < 8; uq++) {
+        var au2 = ur()*6.283, ru2 = (T*0.3 + k*T*0.85);
+        g.fillStyle = f.col;
+        g.beginPath();
+        g.arc(f.x + Math.cos(au2)*ru2, f.y + Math.sin(au2)*ru2 - k*8, 2.4*(1-k)+0.6, 0, 6.283);
         g.fill();
       }
     } else if (f.kind === 'coin') {
