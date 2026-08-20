@@ -38,13 +38,21 @@
 <!-- ══ PLAY ═══════════════════════════════════════════════════════ -->
 <section id="scr-play" class="screen">
   <header id="topbar">
-    <div class="stat"><span class="tag">Gold</span><b id="hud-gold">0</b></div>
-    <div class="stat"><span class="tag">Gate</span><b id="hud-lives">20</b></div>
-    <div class="stat"><span class="tag">Wave</span><b id="hud-wave">1 / 18</b></div>
+    <div class="stat gold"><span class="tag">Gold</span><b id="hud-gold">0</b>
+      <i id="hud-gold-d" class="delta"></i></div>
+    <div class="stat"><span class="tag">Toll</span><b id="hud-lives">20</b>
+      <i id="hud-lives-d" class="delta"></i></div>
+    <div class="wavebox">
+      <div class="wave-line">
+        <span class="tag">Wave</span><b id="hud-wave">1 / 18</b>
+        <span id="hud-next" class="next"></span>
+      </div>
+      <div class="wavebar"><i id="hud-wavebar"></i></div>
+    </div>
     <button id="btn-wave">BEGIN</button>
     <div class="sp">
-      <button id="btn-codex2" class="ghost">CODEX</button>
-      <button id="btn-settings2" class="ghost">⚙</button>
+      <button id="btn-codex2" class="ghost">BOOK</button>
+      <button id="btn-settings2" class="ghost" title="Settings">&#9881;</button>
       <button id="btn-pause">PAUSE</button>
       <button id="sp-1" class="on">1&times;</button>
       <button id="sp-2">2&times;</button>
@@ -55,7 +63,20 @@
   <div id="stage">
     <div id="boardwrap">
       <canvas id="board"></canvas>
+      <div id="banner"></div>
       <div id="toast"></div>
+      <div id="pause-veil">
+        <div class="pause-plate">
+          <h2>HELD</h2>
+          <p id="pause-sub"></p>
+          <div class="pause-btns">
+            <button id="pz-resume" class="big">RESUME</button>
+            <button id="pz-book" class="ghost">The Book</button>
+            <button id="pz-set" class="ghost">Settings</button>
+            <button id="pz-quit" class="ghost">Abandon the road</button>
+          </div>
+        </div>
+      </div>
     </div>
     <aside id="side">
       <div class="side-h">The Wall</div>
@@ -72,20 +93,16 @@
 <!-- ══ CODEX ══════════════════════════════════════════════════════ -->
 <div id="codex">
   <div class="codex-plate">
-    <h2>THE CODEX</h2>
-    <div id="codex-body"></div>
-    <h3>Commands</h3>
-    <div class="keys">
-      <b>1 &ndash; 4</b><span>choose a tower, then click a flagstone plot</span>
-      <b>Click a tower</b><span>inspect, upgrade or sell it</span>
-      <b>Click a hero, then the board</b><span>send them there</span>
-      <b>Q W E</b><span>hero abilities</span>
-      <b>Space</b><span>call the next wave early for extra gold</span>
-      <b>Shift + click</b><span>keep placing the same tower</span>
-      <b>Right-click</b><span>cancel placement, or send the selected hero</span>
-      <b>P</b><span>pause</span>
-      <b>C</b><span>open and close this codex</span>
+    <div class="codex-head">
+      <h2>THE WARDWRIGHT&rsquo;S BOOK</h2>
+      <nav class="tabs">
+        <button class="tab on" data-tab="react">Confluences</button>
+        <button class="tab" data-tab="best">Bestiary</button>
+        <button class="tab" data-tab="wall">The Wall</button>
+        <button class="tab" data-tab="keys">Commands</button>
+      </nav>
     </div>
+    <div id="codex-body"></div>
     <div class="codex-foot"><button id="codex-close" class="big">CLOSE</button></div>
   </div>
 </div>

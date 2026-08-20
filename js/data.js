@@ -7,6 +7,15 @@
 var CF = window.CF || {};
 window.CF = CF;
 
+/* Where this is. Naming the road and the gate costs nothing and stops the
+   whole thing reading as a generic fantasy nowhere. */
+CF.PLACE = {
+  road:  'the Draymoor Road',
+  gate:  'the Ninth Toll',
+  arch:  'the Breach',
+  you:   'wardwright'
+};
+
 CF.TILE = 40;
 CF.COLS = 26;
 CF.ROWS = 16;
@@ -176,42 +185,50 @@ CF.ENEMIES = {
   husk: {
     key:'husk', name:'Husk', hp:70, speed:1.65, armor:0, bounty:5, leak:1, dps:14,
     r:15, col:'#8c8477',
+    note:"Whatever it used to be, it walked this road before. They still keep to the ruts.",
     demand:'None. This is what a plain wall is for.'
   },
   sprite: {
     key:'sprite', name:'Sprite', hp:26, speed:2.7, armor:0, bounty:2, leak:1, dps:7,
     r:10, col:'#b7d99b',
+    note:"They travel the way weather does. Counting them is a poor use of the time you have.",
     demand:'FIRESTORM. They come in numbers; kill them in numbers.'
   },
   golem: {
     key:'golem', name:'Cairn Golem', hp:460, speed:1.05, armor:22, bounty:15, leak:2, dps:34,
     r:21, col:'#7d7360',
+    note:"Field-stone, stacked and bound. The plate is scavenged — you can still see the rivet holes of whoever wore it first.",
     demand:'GRIT. Plate turns everything until Gale and Stone scour it off.'
   },
   acolyte: {
     key:'acolyte', name:'Warded Acolyte', hp:200, speed:1.5, armor:0, bounty:18, leak:2, dps:16,
     r:17, col:'#9a7fc4', wardImmune:true, wardBreak:52,
+    note:"The ward is not armour. Steel goes through it and so does fire. Only the moment two elements meet will trouble it.",
     demand:'ANY reaction. Tower fire alone will never touch it.'
   },
   cinder: {
     key:'cinder', name:'Cinder Knight', hp:260, speed:1.45, armor:6, bounty:17, leak:2, dps:28,
     r:18, col:'#c4553a', burnsOff:'tide',
+    note:"It runs hot enough to boil a Tide ward off itself before you can pair it. Water is not an answer here. Nearly anything else is.",
     demand:'Anything but Tide. It boils the water off before you can pair it.'
   },
   drowned: {
     key:'drowned', name:'Drowned Marcher', hp:210, speed:1.35, armor:4, bounty:14, leak:2, dps:22,
     r:18, col:'#4e7f92', selfAura:{ el:'tide', every:2.2 },
+    note:"It comes up the road wet and stays wet. You are handed half a reaction and no say in which half.",
     demand:'Choose its partner. It arrives already carrying Tide.'
   },
   gorehoof: {
     key:'gorehoof', name:'Gorehoof', hp:130, speed:3.5, armor:0, bounty:13, leak:3, dps:38,
     r:19, col:'#c9673f',
+    note:"Nothing on this wall kills it in the distance it gives you. Stop it, or write off the toll.",
     demand:'FROST. You will not out-damage it. Stop it.'
   },
   idol: {
     key:'idol', name:'The Sundered Idol', hp:5200, speed:0.85, armor:20, bounty:400, leak:20, dps:85,
     r:32, col:'#6f6486', boss:true,
     shatter:{ every:8.5, radius:3.4, immune:2.0 },
+    note:"It was worshipped once and still remembers the shape of that. Every few breaths it sheds everything laid on it and stands untouchable while it does.",
     demand:'Everything at once. It sheds auras on a timer; keep re-laying them.'
   }
 };

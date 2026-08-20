@@ -41,9 +41,17 @@ G.boot = function () {
   document.addEventListener('keydown', wake, { once:false });
 
   CF.onEvent = function (kind, a) {
+    if (kind === 'spawn') {
+      if (G.markMet(a)) {
+        var dd = CF.ENEMIES[a];
+        toast(dd.name + ' — ' + dd.demand);
+      }
+      return;
+    }
     var au = CF.audio;
     if (!au.ready()) return;
     if (kind === 'reaction') au.reaction(a);
+    else if (kind === 'spawn') { /* handled below, before the audio guard */ }
     else if (kind === 'shot') au.shot(a);
     else if (kind === 'death') au.death(a);
     else if (kind === 'leak') au.leak();
@@ -74,7 +82,16 @@ G.boot = function () {
   $('btn-again').onclick = function () { newRun(); };
   $('btn-menu').onclick = function () { screen('title'); startIntro(); };
   $('btn-wave').onclick = function () { if (S) CF.startWave(S); };
-  $('btn-pause').onclick = togglePause;
+  $('btn-pause').onclick = function () { togglePause(); };
+  $('pz-resume').onclick = function () { togglePause(false); };
+  $('pz-book').onclick = function () { $('codex').classList.add('on'); };
+  $('pz-set').onclick = openSettings;
+  $('pz-quit').onclick = function () {
+    togglePause(false);
+    stopIntro();
+    screen('title');
+    startIntro();
+  };
   [1,2,3].forEach(function (m) {
     $('sp-' + m).onclick = function () { setSpeed(m); };
   });
@@ -113,6 +130,8 @@ function newRun() {
   S = CF.newGame((Math.random()*1e9)|0);
   seen = {};
   picked = null; paused = false; ended = false;
+  hudPrev = { gold:null, lives:null, wave:0 };
+  $('pause-veil').classList.remove('on');
   R.view = { hover:null, sel:null, ghost:null, heroSel:S.heroes[0] };
   setSpeed(parseInt(CF.settings.speed, 10) || 1);
   stopIntro();
@@ -151,9 +170,20 @@ function setSpeed(m) {
   [1,2,3].forEach(function (k) { $('sp-' + k).classList.toggle('on', k === m); });
   $('btn-pause').textContent = 'PAUSE';
 }
-function togglePause() {
-  paused = !paused;
+function togglePause(force) {
+  paused = (force === undefined) ? !paused : force;
   $('btn-pause').textContent = paused ? 'RESUME' : 'PAUSE';
+  var veil = $('pause-veil');
+  veil.classList.toggle('on', paused);
+  if (paused && S) {
+    var left = CF.WAVES.length - S.wave;
+    $('pause-sub').textContent = S.wave === 0
+      ? 'Nothing has come up ' + CF.PLACE.road + ' yet.'
+      : left > 0
+        ? 'Wave ' + S.wave + ' of ' + CF.WAVES.length + '. ' + left +
+          ' still to come, and ' + S.lives + ' may pass you.'
+        : 'The last of them.';
+  }
 }
 
 /* ── the wall: tower palette ─────────────────────────────────────────── */
@@ -284,12 +314,74 @@ function syncHeroBar() {
 }
 
 /* ── HUD ─────────────────────────────────────────────────────────────── */
+var hudPrev = { gold:null, lives:null, wave:0 };
+
+function flash(id, amount) {
+  var n = $(id);
+  if (!n) return;
+  n.textContent = (amount > 0 ? '+' : '') + amount;
+  n.className = 'delta show ' + (amount > 0 ? 'up' : 'down');
+  setTimeout(function () { n.className = 'delta'; }, 1000);
+}
+
 function syncHud() {
-  $('hud-gold').textContent = Math.floor(S.gold);
+  var gold = Math.floor(S.gold);
+  $('hud-gold').textContent = gold;
   $('hud-lives').textContent = S.lives;
   $('hud-wave').textContent = Math.max(1, S.wave) + ' / ' + CF.WAVES.length;
   var lv = $('hud-lives');
   lv.classList.toggle('low', S.lives <= 5);
+
+  /* money and the toll are the two numbers worth watching, so a change to
+     either has to be visible without staring at it */
+  if (hudPrev.gold !== null && gold !== hudPrev.gold) {
+    var dg = gold - hudPrev.gold;
+    if (Math.abs(dg) >= 5) flash('hud-gold-d', dg);
+  }
+  if (hudPrev.lives !== null && S.lives < hudPrev.lives) {
+    flash('hud-lives-d', S.lives - hudPrev.lives);
+    lv.classList.remove('hurt'); void lv.offsetWidth; lv.classList.add('hurt');
+  }
+  hudPrev.gold = gold; hudPrev.lives = S.lives;
+
+  if (S.wave !== hudPrev.wave) {
+    if (S.wave > 0) showBanner(S.wave);
+    hudPrev.wave = S.wave;
+  }
+
+  /* the bar shows either how far through the wave you are, or how long the
+     quiet lasts -- both are things you are actually waiting on */
+  var bar = $('hud-wavebar'), box = bar && bar.parentNode;
+  if (bar) {
+    if (S.waveActive) {
+      var w = CF.WAVES[S.wave-1];
+      var total = 0;
+      w.g.forEach(function (gp) { total += gp[1]; });
+      var left = S.spawnQueue.length + S.enemies.length;
+      box.classList.remove('rest');
+      bar.style.width = Math.round(100*(1 - Math.min(1, left/Math.max(1, total)))) + '%';
+    } else {
+      box.classList.add('rest');
+      bar.style.width = Math.round(100*(1 - Math.max(0, Math.min(1, S.gap/CF.WAVE_GAP)))) + '%';
+    }
+  }
+
+  /* what is actually coming next, so the wall can be prepared for it */
+  var nx = $('hud-next');
+  if (nx) {
+    var idx = S.waveActive ? S.wave : S.wave;      // the wave not yet begun
+    var nw = CF.WAVES[idx];
+    if (!nw) nx.innerHTML = '';
+    else {
+      var kinds = {};
+      nw.g.forEach(function (gp) { kinds[gp[0]] = (kinds[gp[0]] || 0) + gp[1]; });
+      var names = Object.keys(kinds).slice(0, 3).map(function (k) {
+        return '<b>' + kinds[k] + '\u00d7</b> ' + CF.ENEMIES[k].name;
+      });
+      nx.innerHTML = 'next: ' + names.join(', ') +
+        (Object.keys(kinds).length > 3 ? ' \u2026' : '');
+    }
+  }
 
   var btn = $('btn-wave');
   if (S.waveActive) {
@@ -400,7 +492,14 @@ function onKey(ev) {
   if (!S) return;
   var k = ev.key.toLowerCase();
   if (k >= '1' && k <= '4') { pick(CF.TOWER_ORDER[+k - 1]); return; }
-  if (k === 'escape') { picked = null; R.view.ghost = null; R.view.sel = null; syncPalette(); return; }
+  if (k === 'escape') {
+    if ($('codex').classList.contains('on')) { $('codex').classList.remove('on'); return; }
+    if ($('settings').classList.contains('on')) { $('settings').classList.remove('on'); return; }
+    if (paused) { togglePause(false); return; }
+    if (picked || R.view.sel) { picked = null; R.view.ghost = null; R.view.sel = null; syncPalette(); return; }
+    togglePause(true);
+    return;
+  }
   if (k === ' ') { ev.preventDefault(); if (!S.waveActive) CF.startWave(S); return; }
   if (k === 'p') togglePause();
   if (k === 'c') $('codex').classList.toggle('on');
@@ -531,17 +630,88 @@ function setCap(t) {
   if (n && n.textContent !== t) n.textContent = t;
 }
 
-/* ── codex -──────────────────────────────────────────────────────────── */
-function buildCodex() {
-  var host = $('codex-body');
-  host.innerHTML = '';
+/* Waves get a name so the run has landmarks rather than a counter. */
+var WAVE_NAMES = [
+  'First light', 'Stragglers', 'The green flood', 'Two who are warded',
+  'Stonework', 'A wider flood', 'Hooves on the ruts', 'Coalsmen',
+  'Stone and ward', 'The wet company', 'Coal and cairn', 'A choir of wards',
+  'Everything at a run', 'The long press', 'Drowned column', 'Plate and hoof',
+  'All of it', 'THE SUNDERED IDOL'
+];
 
-  var intro = el('p', 'codex-lede',
-    'An enemy carries <b>one</b> element at a time. Lay a second, different ' +
-    'element on it and the two react, spend themselves, and leave the target ' +
-    'unable to hold anything new for a moment. Doubling up on one element ' +
-    'never reacts — so a wall of one colour is a wall that does almost nothing.');
-  host.appendChild(intro);
+function showBanner(n) {
+  var b = $('banner');
+  if (!b) return;
+  var w = CF.WAVES[n-1];
+  var kinds = {};
+  w.g.forEach(function (gp) { kinds[gp[0]] = (kinds[gp[0]] || 0) + gp[1]; });
+  var line = Object.keys(kinds).map(function (k) {
+    return kinds[k] + '\u00d7 ' + CF.ENEMIES[k].name;
+  }).join('   \u00b7   ');
+  b.innerHTML =
+    '<div class="bn-w">' + (w.boss ? 'the last of them' : 'wave ' + n) + '</div>' +
+    '<div class="bn-n">' + (WAVE_NAMES[n-1] || ('Wave ' + n)) + '</div>' +
+    '<div class="bn-s">' + line + '</div>';
+  b.classList.remove('on');
+  void b.offsetWidth;                       // restart the animation
+  b.classList.add('on');
+}
+
+/* ── the book -────────────────────────────────────────────────────────
+   Four tabs. The bestiary only fills in as you actually meet things, and
+   what it records is the VERB each foe demands -- which is the only thing
+   about it you can act on.
+*/
+var codexTab = 'react';
+
+function metKey() { return 'confluence.met.v1'; }
+function loadMet() {
+  try { return JSON.parse(localStorage.getItem(metKey()) || '{}') || {}; }
+  catch (e) { return {}; }
+}
+function saveMet(m) {
+  try { localStorage.setItem(metKey(), JSON.stringify(m)); } catch (e) {}
+}
+var met = loadMet();
+G.markMet = function (key) {
+  if (met[key]) return false;
+  met[key] = 1; saveMet(met);
+  return true;
+};
+
+function buildCodex() {
+  var head = document.querySelector('#codex .tabs');
+  if (head && !head._wired) {
+    head._wired = true;
+    [].forEach.call(head.querySelectorAll('.tab'), function (b) {
+      b.onclick = function () {
+        codexTab = b.dataset.tab;
+        [].forEach.call(head.querySelectorAll('.tab'), function (o) {
+          o.classList.toggle('on', o === b);
+        });
+        renderCodex();
+      };
+    });
+  }
+  renderCodex();
+}
+
+function renderCodex() {
+  var host = $('codex-body');
+  if (!host) return;
+  host.innerHTML = '';
+  if (codexTab === 'react') codexReactions(host);
+  else if (codexTab === 'best') codexBestiary(host);
+  else if (codexTab === 'wall') codexWall(host);
+  else codexKeys(host);
+}
+
+function codexReactions(host) {
+  host.appendChild(el('p', 'codex-lede',
+    'A foe carries <b>one</b> element. Lay a second, <b>different</b> element on ' +
+    'it and the two react, spend themselves, and leave it unable to hold anything ' +
+    'new for a moment. Doubling one element never reacts \u2014 a wall of one colour ' +
+    'is a wall that does almost nothing.'));
 
   var grid = el('div', 'react-grid');
   CF.REACT_TABLE.forEach(function (pair) {
@@ -561,19 +731,126 @@ function buildCodex() {
   });
   host.appendChild(grid);
 
-  host.appendChild(el('h3', null, 'What comes down the road'));
-  var list = el('div', 'bestiary');
+  host.appendChild(el('p', 'codex-foot-note',
+    'Order matters. The tower that fires first lays the element; the next one ' +
+    'that reaches the same foe decides what happens. An element is laid by the ' +
+    'shot that was <b>aimed</b> \u2014 a splash wounds a clump but leaves only its ' +
+    'target carrying anything.'));
+}
+
+function codexBestiary(host) {
+  var total = Object.keys(CF.ENEMIES).length;
+  var known = Object.keys(CF.ENEMIES).filter(function (k) { return met[k]; }).length;
+  host.appendChild(el('p', 'codex-lede',
+    'Recorded on ' + CF.PLACE.road + ': <b>' + known + ' of ' + total + '</b>. ' +
+    'Entries fill in when a thing actually reaches you.'));
+
+  var list = el('div', 'best-grid');
   Object.keys(CF.ENEMIES).forEach(function (k) {
     var d = CF.ENEMIES[k];
-    var row = el('div', 'best-row');
-    row.dataset.key = k;
-    row.innerHTML =
-      '<span class="best-swatch" style="--c:' + d.col + '"></span>' +
-      '<span class="best-name">' + d.name + '</span>' +
-      '<span class="best-demand">' + d.demand + '</span>';
-    list.appendChild(row);
+    var seen = !!met[k];
+    var card = el('div', 'best-card' + (seen ? '' : ' unknown') + (d.boss ? ' boss' : ''));
+
+    var art = el('div', 'best-art');
+    var img = CF.art.enemies && CF.art.enemies[k];
+    if (img) {
+      var c2 = CF.art.cv(78, 78);
+      var g2 = c2.getContext('2d');
+      var sc = Math.min(70/img.width, 70/img.height);
+      g2.translate(39, 39);
+      g2.scale(sc, sc);
+      if (!seen) { g2.filter = 'brightness(0)'; g2.globalAlpha = 0.55; }
+      g2.drawImage(img, -img.width/2, -img.height/2);
+      art.appendChild(c2);
+    }
+    card.appendChild(art);
+
+    var body = el('div', 'best-body');
+    if (seen) {
+      body.innerHTML =
+        '<div class="bc-name">' + d.name + (d.boss ? '<em>toll-breaker</em>' : '') + '</div>' +
+        '<div class="bc-stats">' +
+          '<span>vigour</span><b>' + d.hp + '</b>' +
+          '<span>pace</span><b>' + d.speed.toFixed(2) + '</b>' +
+          (d.armor ? '<span>plate</span><b>' + d.armor + '</b>' : '') +
+          '<span>toll</span><b>' + d.leak + '</b>' +
+        '</div>' +
+        '<div class="bc-demand"><i>demands</i>' + d.demand + '</div>' +
+        '<div class="bc-note">' + d.note + '</div>';
+    } else {
+      body.innerHTML =
+        '<div class="bc-name">&mdash;</div>' +
+        '<div class="bc-note">Not yet seen on this road.</div>';
+    }
+    card.appendChild(body);
+    list.appendChild(card);
   });
   host.appendChild(list);
+}
+
+function codexWall(host) {
+  host.appendChild(el('p', 'codex-lede',
+    'Every tower is an <b>applier</b> first and a weapon second. What matters is ' +
+    'how often it lands its element and where, not what it does per shot.'));
+
+  var grid = el('div', 'react-grid');
+  CF.TOWER_ORDER.forEach(function (k) {
+    var d = CF.TOWERS[k], e = CF.EL[d.el], t0 = d.tiers[0];
+    var card = el('div', 'react-card');
+    card.style.setProperty('--c', e.col);
+    card.innerHTML =
+      '<div class="rc-pair"><span class="dot" style="--d:' + e.col + '"></span>' +
+        e.name + '<em>\u00b7</em>' + d.cost + 'g</div>' +
+      '<div class="rc-name" style="font-size:15px">' + d.name + '</div>' +
+      '<div class="rc-stats">' +
+        '<span>hits for</span><b>' + t0.dmg + '</b>' +
+        '<span>every</span><b>' + t0.rof.toFixed(2) + 's</b>' +
+        '<span>reach</span><b>' + t0.range.toFixed(1) + '</b>' +
+        '<span>lays element</span><b>' + (60/t0.rof/60).toFixed(2) + '/s</b>' +
+      '</div>' +
+      '<div class="rc-blurb">' + d.blurb + '</div>';
+    grid.appendChild(card);
+  });
+  host.appendChild(grid);
+
+  host.appendChild(el('h3', null, 'Those who walk'));
+  var hg = el('div', 'react-grid');
+  CF.HERO_ORDER.forEach(function (k) {
+    var d = CF.HEROES[k], e = CF.EL[d.el];
+    var card = el('div', 'react-card');
+    card.style.setProperty('--c', e.col);
+    card.innerHTML =
+      '<div class="rc-pair"><span class="dot" style="--d:' + e.col + '"></span>' +
+        e.name + '<em>\u00b7</em>' + (d.cost ? d.cost + 'g' : 'sworn') + '</div>' +
+      '<div class="rc-name" style="font-size:15px">' + d.name + ', ' + d.title + '</div>' +
+      '<div class="rc-blurb">' + d.blurb + ' <b style="color:' + e.col + '">' +
+        d.ability.name + ':</b> ' + d.ability.blurb + '</div>';
+    hg.appendChild(card);
+  });
+  host.appendChild(hg);
+  host.appendChild(el('p', 'codex-foot-note',
+    'You may field <b>' + CF.HERO_SLOTS + '</b>. A third would add nothing \u2014 a foe ' +
+    'can only be reacted so often, however many appliers you own. Send one home ' +
+    'to make room for a different element.'));
+}
+
+function codexKeys(host) {
+  var k = el('div', 'keys');
+  k.innerHTML =
+    '<b>1 \u2013 4</b><span>choose a tower, then click a foundation</span>' +
+    '<b>Click a tower</b><span>inspect, upgrade or sell it</span>' +
+    '<b>Click a hero, then the board</b><span>send them there</span>' +
+    '<b>Q W E</b><span>hero abilities</span>' +
+    '<b>Space</b><span>call the next wave early, for gold</span>' +
+    '<b>Shift + click</b><span>keep placing the same tower</span>' +
+    '<b>Right-click</b><span>cancel placement, or send the selected hero</span>' +
+    '<b>P</b><span>pause</span>' +
+    '<b>C</b><span>open and close this book</span>' +
+    '<b>Esc</b><span>close whatever is open</span>';
+  host.appendChild(k);
+  host.appendChild(el('p', 'codex-foot-note',
+    'You hold ' + CF.PLACE.gate + ' on ' + CF.PLACE.road + '. They come out of ' +
+    CF.PLACE.arch + ' and they only ever go one way.'));
 }
 
 /* ── ending ──────────────────────────────────────────────────────────── */

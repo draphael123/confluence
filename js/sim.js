@@ -241,6 +241,7 @@ function spawnEnemy(S, key) {
   };
   var p = CF.posAt(0); e.x = p.x; e.y = p.y;
   S.enemies.push(e);
+  say('spawn', key);
   return e;
 }
 CF.spawnEnemy = spawnEnemy;
@@ -262,12 +263,14 @@ CF.hurt = function (S, e, amount, opts) {
   }
   e.hp -= amount;
   e.hitFlash = 0.12;
+  e.knock = Math.min(1, (e.knock || 0) + (opts.reaction ? 0.9 : 0.45));
   if (e.hp <= 0) {
     e.dead = true;
     var b = Math.round(e.def.bounty * CF.GOLD_MUL);
     S.gold += b; S.stats.earned += b; S.stats.kills++;
     say('death', e.def.boss);
     S.fx.push({ kind:'death', x:e.x, y:e.y, t:0.4, max:0.4, col:e.def.col, r:e.r });
+    S.fx.push({ kind:'coin', x:e.x, y:e.y - e.r, t:0.85, max:0.85, col:'#d8b04a', n:b });
   }
   return amount;
 };
@@ -411,6 +414,7 @@ CF.step = function (S, dt) {
     if (e.shredT  > 0) e.shredT  -= dt;
     if (e.immuneT > 0) e.immuneT -= dt;
     if (e.hitFlash> 0) e.hitFlash-= dt;
+    if (e.knock    > 0) e.knock = Math.max(0, e.knock - dt*5);
 
     for (var bi = e.burns.length - 1; bi >= 0; bi--) {
       var bn = e.burns[bi];
@@ -489,6 +493,7 @@ CF.step = function (S, dt) {
     var tw = S.towers[ti];
     var st = CF.stat(tw);
     if (tw.flash > 0) tw.flash -= dt;
+    if (tw.recoil > 0) tw.recoil = Math.max(0, tw.recoil - dt*6);
     tw.cool -= dt;
     if (tw.cool > 0) continue;
     var tgt = null, bestD = -1;
@@ -502,7 +507,8 @@ CF.step = function (S, dt) {
     tw.cool = st.rof;
     say('shot', tw.el);
     tw.ang = Math.atan2(tgt.y-tw.y, tgt.x-tw.x);
-    tw.flash = 0.1; tw.shots++;
+    tw.flash = 0.12; tw.shots++;
+    tw.recoil = 1;
     var spd = tw.el === 'gale' ? 18 : tw.el === 'stone' ? 9 : 13;
     S.shots.push({
       x:tw.x, y:tw.y, tgt:tgt, el:tw.el, dmg:st.dmg,

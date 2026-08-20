@@ -134,7 +134,9 @@ R.draw = function (g, S, dt) {
   S.towers.forEach(function (t) {
     var img = A.towers && A.towers[t.key] && A.towers[t.key][t.tier];
     if (!img) return;
-    g.drawImage(img, t.x - img.width/2, t.y - img.height/2 - T*0.28);
+    var kick = (t.recoil || 0);
+    var kx = -Math.cos(t.ang)*kick*3.5, ky = -Math.sin(t.ang)*kick*3.5;
+    g.drawImage(img, t.x - img.width/2 + kx, t.y - img.height/2 - T*0.28 + ky);
     if (t.flash > 0) {
       g.save();
       g.globalCompositeOperation = 'lighter';
@@ -225,8 +227,9 @@ R.draw = function (g, S, dt) {
       /* a short pop as it walks out of the arch */
       var age = S.t - e.born, birth = age < 0.35 ? 0.55 + 0.45*(age/0.35) : 1;
 
+      var kb = (e.knock || 0);
       g.save();
-      g.translate(e.x, e.y + bob);
+      g.translate(e.x - (e.ux||0)*kb*3.2 + bob*0, e.y + bob - (e.uy||0)*kb*3.2);
       g.rotate(tilt * e.face);
       g.scale(e.face * sx * birth, sy * birth);
       if (e.freezeT > 0) g.globalAlpha = 0.92;
@@ -493,6 +496,14 @@ R.draw = function (g, S, dt) {
         g.arc(f.x + Math.cos(ad)*rd, f.y + Math.sin(ad)*rd, 3*(1-k)+1, 0, 6.283);
         g.fill();
       }
+    } else if (f.kind === 'coin') {
+      g.globalAlpha = Math.min(1, (1-k)*2.2);
+      g.font = '700 12px Georgia, serif';
+      g.textAlign = 'center';
+      g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,0.85)';
+      g.strokeText('+' + f.n, f.x, f.y - k*26);
+      g.fillStyle = f.col;
+      g.fillText('+' + f.n, f.x, f.y - k*26);
     } else if (f.kind === 'fizzle') {
       g.globalAlpha = (1-k);
       g.strokeStyle = f.col; g.lineWidth = 2;

@@ -265,3 +265,69 @@ button.big:hover:not(:disabled){background:linear-gradient(#544530,#332b1c);bord
 }
 .hero-go{width:100%;font-size:10px;padding:4px;margin-top:4px;letter-spacing:.10em;opacity:.75}
 .hero-go:hover{opacity:1;border-color:var(--bad);color:var(--bad)}
+
+/* ── richer top bar ──────────────────────────────────────── */
+.stat{position:relative}
+.delta{
+  position:absolute;left:50%;top:-2px;transform:translateX(-50%);
+  font-style:normal;font-size:12px;opacity:0;pointer-events:none;
+  text-shadow:0 1px 3px #000;
+}
+.delta.show{animation:floatUp 1s ease-out}
+.delta.up{color:var(--good)}
+.delta.down{color:var(--bad)}
+@keyframes floatUp{
+  0%{opacity:0;transform:translate(-50%,4px)}
+  18%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-18px)}
+}
+#hud-lives.hurt{animation:shakeNum .4s}
+@keyframes shakeNum{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-3px)}
+  75%{transform:translateX(3px)}
+}
+.wavebox{display:flex;flex-direction:column;gap:4px;min-width:230px}
+.wave-line{display:flex;align-items:baseline;gap:7px}
+.next{font-size:11px;color:var(--ink-soft);letter-spacing:.04em}
+.next b{font-weight:400;color:var(--ink)}
+.wavebar{height:3px;background:#151310;border-radius:2px;overflow:hidden}
+.wavebar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#6b5c3f,var(--gold));transition:width .2s linear}
+.wavebar.rest i{background:linear-gradient(90deg,#3a5b41,#7fc46a)}
+
+/* ── wave banner ─────────────────────────────────────────── */
+#banner{
+  position:absolute;left:50%;top:34%;transform:translate(-50%,-50%) scale(.94);
+  text-align:center;pointer-events:none;opacity:0;
+}
+#banner.on{animation:bannerIn 2.4s ease-out}
+#banner .bn-w{
+  font-size:12px;letter-spacing:.42em;text-transform:uppercase;color:var(--gold);
+  text-shadow:0 2px 8px #000;
+}
+#banner .bn-n{
+  font-size:52px;letter-spacing:.12em;color:var(--ink);
+  text-shadow:0 3px 18px #000,0 0 40px rgba(0,0,0,.8);line-height:1.1;
+}
+#banner .bn-s{font-size:13px;color:var(--ink-soft);text-shadow:0 2px 6px #000;margin-top:4px}
+@keyframes bannerIn{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.94)}
+  12%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  72%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-58%) scale(1.02)}
+}
+
+/* ── pause ───────────────────────────────────────────────── */
+#pause-veil{
+  position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  background:rgba(9,8,7,.72);backdrop-filter:blur(2px);z-index:12;
+}
+#pause-veil.on{display:flex}
+.pause-plate{text-align:center;padding:26px 34px}
+.pause-plate h2{
+  margin:0 0 4px;font-weight:400;font-size:34px;letter-spacing:.4em;
+  color:var(--gold);text-indent:.4em;
+}
+#pause-sub{color:var(--ink-soft);font-size:13px;margin:0 0 22px}
+.pause-btns{display:flex;flex-direction:column;gap:8px;min-width:230px}
+.pause-btns button{width:100%}
